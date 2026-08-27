@@ -111,8 +111,8 @@ Codex's final safety audit also removed inherited-pipe joins from version probes
 - Clean Codex TUI aggregate: 3,557 passed, the same 26 known baseline failures, 10 ignored.
 - All six pinned GitHub Action SHAs were verified live against their documented version tags.
 - Pinned Actionlint 1.7.12 passed both workflows locally, and CI repeats it after verifying the tool archive against a hard-coded SHA-256.
-- The 55-file candidate passes the size/privacy/supply-chain checks; the final nonduplicate-current-review assertion awaits the complete fresh report. The repeatable local and CI gate is in `scripts/check_publication_candidate_ai.ps1` for credential patterns, private-key headers, email addresses, absolute local paths, binaries, reparse points, files over 1 MiB, and a total candidate over the deliberate 640 KiB lean-source budget.
-- Local pinned cargo-about renders for both workspaces passed. The fresh Claude verdict, GitHub Actions, draft release, and isolated downloaded-artifact lifecycle acceptance remain explicit gates; none is claimed complete here until recorded in `VERIFICATION_ai.md`.
+- The 57-file candidate passes the size/privacy/supply-chain checks; the final nonduplicate-current-review assertion awaits the complete fresh exact-tree report. The repeatable local and CI gate is in `scripts/check_publication_candidate_ai.ps1` for credential patterns, private-key headers, email addresses, absolute local paths, binaries, reparse points, files over 1 MiB, and a total candidate over the deliberate 640 KiB lean-source budget.
+- Local pinned cargo-about renders for both workspaces passed. Public GitHub CI is now green on commit `574a0d0`; the fresh exact-tree Claude verdict, signed draft release, and isolated downloaded-artifact lifecycle acceptance remain explicit gates.
 - The committed verification public key has a valid production-path fixture, but the corresponding private seed is unavailable. Rotation and GitHub secret provisioning require explicit user authorization.
 ## Round-six findings
 
@@ -183,3 +183,14 @@ Round-twelve L-1 (host-warning wording), L-3 (backup recovery), L-4 (future upst
 The user found that assistant transcript text could not be selected immediately after a response. Typing or paste had restored terminal mouse capture, and only a later wheel event released it, so the earlier live selection check had accidentally depended on scrolling first.
 
 The patched TUI now records whether a task was running before each event cycle. After the turn transitions from running to idle, it releases mouse capture only when the composer is empty. This gives completed transcript drag selection back to VS Code while preserving click placement and drag selection for an existing draft. Keyboard or paste still restores capture, and wheel handoff remains unchanged. The focused truth-table regression and the existing wheel regression passed; the complete patched aggregate passed at 3,570/26/10 against the unchanged clean 3,557/26/10 baseline. A fresh user live retest and exact-tree Claude verdict remain required.
+
+## First hosted CI reconciliation
+
+The public repository is live at `AsadSaleemQ/cli-editor`. Hosted execution found two portability gaps without exposing a product-runtime regression:
+
+- Run `33045649893` showed that Windows checkout conversion changed byte-pinned patch/fixture inputs and that Linux PowerShell did not enumerate `.gitignore` through the original item lookup. `.gitattributes` now preserves LF for release-critical text, and the publication scanner resolves every Git-listed path from the repository root.
+- Run `33045970130` proved the dispatcher and clean 3,557-test Codex baseline, then showed that Linux PowerShell requires `Get-Item -Force` for the dotfile and that the generic Rusty V8 MSVC URL returns 404 for Codex's pointer-compression/sandbox build.
+- The fix pins both official OpenAI Codex Rusty V8 150.4.0 assets by name, byte length, and SHA-256; verifies the pinned upstream `Cargo.lock` version and `MODULE.bazel` URL/hash provenance; downloads atomically; and supplies both build-script environment paths in CI, release preflight, and reproducible release builds.
+- Public run [`33047859125`](https://github.com/AsadSaleemQ/cli-editor/actions/runs/33047859125) on exact commit `574a0d0ea3ffc13fe395d0bc21e079183c4599b2` passed all three jobs. This includes Ubuntu publication/workflow lint, all 66 dispatcher tests and release/finalizer gates, clean 3,557/26/10 Codex baseline, official-V8 code-mode probe, and patched 3,570/26/10 aggregate.
+
+These hosted fixes changed release scripts and workflows after Claude's prior approval. A new exact-tree Claude verdict is therefore still mandatory even though the changed public commit is fully green.

@@ -13,7 +13,7 @@ try {
     $findings = [Collections.Generic.List[object]]::new()
     $totalBytes = 0L
     foreach ($file in $files) {
-        $item = Get-Item -LiteralPath (Join-Path $root $file)
+        $item = Get-Item -Force -LiteralPath (Join-Path $root $file)
         $totalBytes += $item.Length
         if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
             $findings.Add([pscustomobject]@{ Kind = 'reparse-point'; File = $file; Line = 0 })

@@ -97,6 +97,11 @@ jobs:
         shell: pwsh
         run: |
           $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
+          $v8 = .\scripts\prepare_rusty_v8_ai.ps1 `
+            -UpstreamRoot $upstream `
+            -DestinationRoot (Join-Path $env:RUNNER_TEMP 'rusty-v8')
+          $env:RUSTY_V8_ARCHIVE = $v8.ArchivePath
+          $env:RUSTY_V8_SRC_BINDING_PATH = $v8.BindingPath
           $manifest = Join-Path $upstream 'codex-rs\Cargo.toml'
           cargo +1.95.0-x86_64-pc-windows-msvc check --locked --manifest-path $manifest -p codex-code-mode-host
       - name: Compare full patched TUI suite with unpatched Windows baseline

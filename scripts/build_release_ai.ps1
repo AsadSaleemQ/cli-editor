@@ -63,6 +63,9 @@ if ($LASTEXITCODE -ne 0) { throw 'patch application failed' }
 & git -C $upstream diff --check
 if ($LASTEXITCODE -ne 0) { throw 'patched tree has whitespace errors' }
 & (Join-Path $root 'scripts\refresh_codex_lock_ai.ps1') -UpstreamRoot $upstream
+$rustyV8 = & (Join-Path $root 'scripts\prepare_rusty_v8_ai.ps1') `
+    -UpstreamRoot $upstream `
+    -DestinationRoot (Join-Path $work 'rusty-v8')
 
 $env:SOURCE_DATE_EPOCH = [string]$IssuedUnix
 $env:CARGO_INCREMENTAL = '0'
@@ -81,6 +84,8 @@ $env:CARGO_ENCODED_RUSTFLAGS = (@(
 ) + $deterministicRustflags) -join [char]0x1f
 & cargo +1.95.0-x86_64-pc-windows-msvc build --locked --release --bins --manifest-path (Join-Path $root 'Cargo.toml')
 if ($LASTEXITCODE -ne 0) { throw 'dispatcher build failed' }
+$env:RUSTY_V8_ARCHIVE = $rustyV8.ArchivePath
+$env:RUSTY_V8_SRC_BINDING_PATH = $rustyV8.BindingPath
 $env:CARGO_ENCODED_RUSTFLAGS = (@(
     '-C',
     'link-arg=/STACK:8388608',

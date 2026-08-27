@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([int64] $MaximumFileBytes = 1048576, [int64] $MaximumTotalBytes = 655360)
+param([int64] $MaximumFileBytes = 1048576, [int64] $MaximumTotalBytes = 524288)
 
 $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
@@ -40,18 +40,17 @@ try {
             }
         }
     }
-    $implementationReview = 'CLAUDE_IMPLEMENTATION_REVIEW_ai.md'
-    if ($implementationReview -in $files) {
-        $reviewText = [IO.File]::ReadAllText((Join-Path $root $implementationReview))
-        $normalizedReviewText = $reviewText.Replace("`r`n", "`n")
-        if ($reviewText.Length -lt 1000 -or $reviewText -notmatch '(?m)^VERDICT: (?:APPROVED|CHANGES_REQUIRED)\r?$' -or $reviewText -match '^(?:You''ve hit your session limit|Failed to authenticate|API Error:)') {
-            $findings.Add([pscustomobject]@{ Kind = 'invalid-review-artifact'; File = $implementationReview; Line = 1 })
-        }
-        foreach ($historicalReview in @($files | Where-Object { $_ -match '^docs/reviews/CLAUDE_IMPLEMENTATION_REVIEW_ROUND[0-9]+_ai\.md$' })) {
-            $normalizedHistoricalReview = [IO.File]::ReadAllText((Join-Path $root $historicalReview)).Replace("`r`n", "`n")
-            if ($normalizedHistoricalReview -eq $normalizedReviewText) {
-                $findings.Add([pscustomobject]@{ Kind = 'duplicate-current-review'; File = $implementationReview; Line = 1 })
-            }
+    $internalArtifactPatterns = @(
+        '^CASE_STUDY_ai\.md$',
+        '^CLAUDE_.*REVIEW.*_ai\.md$',
+        '^CODEX_.*RECONCILIATION.*_ai\.md$',
+        '^PATCH_REVIEW_ai\.md$',
+        '^(?:PLAN|REVIEW_HANDOFF|SESSION_HANDOFF)_ai\.md$',
+        '^docs/reviews/'
+    )
+    foreach ($file in $files) {
+        if (@($internalArtifactPatterns | Where-Object { $file -match $_ }).Count -ne 0) {
+            $findings.Add([pscustomobject]@{ Kind = 'internal-process-artifact'; File = $file; Line = 0 })
         }
     }
     if ($totalBytes -gt $MaximumTotalBytes) {

@@ -71,15 +71,15 @@ cargo build --manifest-path upstream-codex\codex-rs\Cargo.toml --release -j 1 -p
 
 Release dispatches are serialized, and preparation requires the requested manifest sequence to exceed every existing release or draft manifest sequence. Release signing then requires the offline private seed corresponding to `compatibility/public-key.hex`. The seed is never committed. It is unavailable to compilation: two unsigned builds must first match completely, after which a separate protected job revalidates the artifacts and uses the seed only for manifest signing/finalization. `src/bin/sign_release_ai.rs` signs exact manifest bytes and emits the public key for a required equality check. Release bundles are signed, hashed, SBOM-attested, and provenance-attested. The release job performs an independent clean rebuild with normalized paths and deterministic ZIP timestamps, then refuses publication unless every artifact hash matches bit-for-bit and an isolated Windows runner completes install, bare default and explicit routes for both CLIs, a 30-sample native-versus-wrapper p95 latency gate for both CLIs, restored native routes, uninstall, residue, and exact raw-PATH checks. v0.1 does not include Authenticode signing or established SmartScreen reputation.
 
-## Evidence
+## Documentation
 
-- [VERIFICATION_ai.md](VERIFICATION_ai.md)
-- [PATCH_REVIEW_ai.md](PATCH_REVIEW_ai.md)
-- [DESKTOP_COMPOSER_BEHAVIOR_ai.md](DESKTOP_COMPOSER_BEHAVIOR_ai.md)
-- [SECURITY_ai.md](SECURITY_ai.md)
-- [CONTRIBUTING_ai.md](CONTRIBUTING_ai.md)
-- [CASE_STUDY_ai.md](CASE_STUDY_ai.md)
-- [Independent review history](docs/reviews/)
+- [Verification and current release gates](VERIFICATION_ai.md)
+- [Desktop composer behavior](DESKTOP_COMPOSER_BEHAVIOR_ai.md)
+- [Updates and rollback](UPDATE_AND_ROLLBACK_ai.md)
+- [Security policy](SECURITY_ai.md)
+- [Contributing](CONTRIBUTING_ai.md)
+- [Release notes](RELEASE_NOTES_ai.md)
+- [Third-party notices](THIRD_PARTY_NOTICES_ai.md)
 
 ## License and trademarks
 

@@ -1,0 +1,10 @@
+OpenAI Codex
+Copyright 2025 OpenAI
+
+This project includes code derived from [Ratatui](https://github.com/ratatui/ratatui), licensed under the MIT license.
+Copyright (c) 2016-2022 Florian Dehau
+Copyright (c) 2023-2025 The Ratatui Developers
+CLI Editor modifications
+Copyright 2026 Asad Saleem
+
+This distribution modifies OpenAI Codex. The modifications add desktop-style terminal composer input, including mouse routing and selection, touchpad/wheel scrolling, clipboard editing, undo/redo, rendering changes, and associated tests. The complete source-level changes are identified by patches/codex/rust-v0.148.0/0001-desktop-composer.patch and THIRD_PARTY_NOTICES_ai.md.

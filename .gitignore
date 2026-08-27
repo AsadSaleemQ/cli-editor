@@ -1,0 +1,28 @@
+/target/
+/.tools/
+/.work/
+/.artifacts/
+*.log
+*.pdb
+*.exe
+*.zip
+*.sha256
+*.sbom.json
+/.trash/
+# Signing secrets
+*.key
+*.pem
+*private*key*
+.env
+.env.*
+
+# Local agent planning and session handoffs
+/.handoff.md
+/PLAN_ai.md
+/REVIEW_HANDOFF_ai.md
+/SESSION_HANDOFF_ai.md
+/CLAUDE_ARCHITECTURE_REVIEW_ai.md
+/CLAUDE_REVIEW_ai.md
+/CODEX_ARCHITECTURE_RECONCILIATION_ai.md
+/CODEX_RECONCILIATION_ai.md
+/CLAUDE_IMPLEMENTATION_REVIEW_REQUEST_ai.md

@@ -1,0 +1,106 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  workflow-lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Enforce public repository boundary
+        shell: pwsh
+        run: ./scripts/check_publication_candidate_ai.ps1
+      - name: Validate GitHub Actions workflows
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="${RUNNER_TEMP}/actionlint_1.7.12_linux_amd64.tar.gz"
+          binary="${RUNNER_TEMP}/actionlint"
+          curl --fail --location --silent --show-error \
+            "https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz" \
+            --output "${archive}"
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  ${archive}" | sha256sum --check --strict
+          tar --extract --gzip --file "${archive}" --directory "${RUNNER_TEMP}" actionlint
+          "${binary}" -no-color
+  dispatcher:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup toolchain install 1.95.0-x86_64-pc-windows-msvc --profile minimal --component rustfmt,clippy
+      - name: Format
+        run: cargo +1.95.0-x86_64-pc-windows-msvc fmt --all -- --check
+      - name: Clippy
+        run: cargo +1.95.0-x86_64-pc-windows-msvc clippy --locked --all-targets -- -D warnings
+      - name: Test
+        run: cargo +1.95.0-x86_64-pc-windows-msvc test --locked -j 1
+      - name: Release build
+        run: cargo +1.95.0-x86_64-pc-windows-msvc build --locked --release --bins
+      - name: Exercise isolated release finalizer
+        shell: pwsh
+        run: .\scripts\check_release_finalizer_ai.ps1 -SignerPath target\release\sign_release_ai.exe
+
+  patch:
+    runs-on: windows-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: codex-patch-3ba0f711642a888aec92a611a3f3b2211157ff89-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Check patch against pinned upstream
+        shell: pwsh
+        run: |
+          $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
+          $patch = "$env:GITHUB_WORKSPACE\patches\codex\rust-v0.148.0\0001-desktop-composer.patch"
+          $expected = '6a87f803bd7f6175c47419ecb0f254c0f62063239ce6007a01c670b259cff08c'
+          if ((Get-FileHash -Algorithm SHA256 -LiteralPath $patch).Hash.ToLowerInvariant() -ne $expected) { throw 'patch hash mismatch' }
+          git clone --filter=blob:none https://github.com/openai/codex.git $upstream
+          git -C $upstream checkout 3ba0f711642a888aec92a611a3f3b2211157ff89
+          git -C $upstream apply --check "$env:GITHUB_WORKSPACE\patches\codex\rust-v0.148.0\0001-desktop-composer.patch"
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup toolchain install 1.95.0-x86_64-pc-windows-msvc --profile minimal --component rustfmt
+      - name: Validate pinned upstream lock refresh
+        shell: pwsh
+        run: |
+          $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
+          .\scripts\refresh_codex_lock_ai.ps1 -UpstreamRoot $upstream
+      - name: Verify clean unpatched Windows baseline
+        shell: pwsh
+        run: |
+          $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
+          .\scripts\check_codex_tui_baseline_ai.ps1 -UpstreamRoot $upstream
+      - name: Apply and validate patch
+        shell: pwsh
+        run: |
+          $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
+          $patch = "$env:GITHUB_WORKSPACE\patches\codex\rust-v0.148.0\0001-desktop-composer.patch"
+          git -C $upstream apply $patch
+          git -C $upstream diff --check
+      - name: Probe required code-mode host package
+        shell: pwsh
+        run: |
+          $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
+          $manifest = Join-Path $upstream 'codex-rs\Cargo.toml'
+          cargo +1.95.0-x86_64-pc-windows-msvc check --locked --manifest-path $manifest -p codex-code-mode-host
+      - name: Compare full patched TUI suite with unpatched Windows baseline
+        shell: pwsh
+        run: |
+          $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
+          .\scripts\check_codex_tui_baseline_ai.ps1 -UpstreamRoot $upstream -ExpectedPassed 3570

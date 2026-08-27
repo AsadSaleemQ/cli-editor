@@ -1,0 +1,437 @@
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without v prefix
+        required: true
+        default: 0.1.0
+      manifest_sequence:
+        description: Strictly increasing signed manifest sequence
+        required: true
+      expires_unix:
+        description: Manifest expiry as Unix seconds
+        required: true
+
+concurrency:
+  group: cli-editor-release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    permissions:
+      contents: write
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.inputs.outputs.version }}
+      manifest_sequence: ${{ steps.inputs.outputs.manifest_sequence }}
+      expires_unix: ${{ steps.inputs.outputs.expires_unix }}
+      issued_unix: ${{ steps.inputs.outputs.issued_unix }}
+      codex_version: ${{ steps.inputs.outputs.codex_version }}
+      repository: ${{ steps.inputs.outputs.repository }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: inputs
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_VERSION: ${{ inputs.version }}
+          INPUT_MANIFEST_SEQUENCE: ${{ inputs.manifest_sequence }}
+          INPUT_EXPIRES_UNIX: ${{ inputs.expires_unix }}
+        run: |
+          if ($env:INPUT_VERSION -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$') { throw 'invalid release version' }
+          $packageVersionLine = Get-Content -LiteralPath (Join-Path $env:GITHUB_WORKSPACE 'Cargo.toml') | Where-Object { $_.StartsWith('version = ') } | Select-Object -First 1
+          if ($null -eq $packageVersionLine) { throw 'Cargo.toml package version is missing' }
+          $packageVersion = $packageVersionLine.Split([char]34)[1]
+          if ($env:INPUT_VERSION -ne $packageVersion) { throw 'release version must equal Cargo.toml package version' }
+          if ($env:GITHUB_REPOSITORY -notmatch '^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$') { throw 'invalid repository slug' }
+          [uint64] $sequence = 0
+          [uint64] $expires = 0
+          if (-not [uint64]::TryParse($env:INPUT_MANIFEST_SEQUENCE, [ref]$sequence) -or $sequence -eq 0) { throw 'invalid manifest sequence' }
+          if (-not [uint64]::TryParse($env:INPUT_EXPIRES_UNIX, [ref]$expires)) { throw 'invalid manifest expiry' }
+          [uint64] $highestExistingSequence = 0
+          $pageNumber = 1
+          do {
+            $releaseErrorPath = Join-Path $env:RUNNER_TEMP "release-enumeration-$pageNumber.stderr.txt"
+            $releaseOutput = @(& gh api "repos/$env:GITHUB_REPOSITORY/releases?per_page=100&page=$pageNumber" 2> $releaseErrorPath)
+            if ($LASTEXITCODE -ne 0) {
+              $releaseError = if (Test-Path -LiteralPath $releaseErrorPath) { @(Get-Content -LiteralPath $releaseErrorPath) -join ' ' } else { 'gh api failed without diagnostic output' }
+              throw "unable to enumerate existing releases: $releaseError"
+            }
+            $releases = @(($releaseOutput -join "`n") | ConvertFrom-Json)
+            foreach ($release in $releases) {
+              foreach ($asset in @($release.assets | Where-Object name -eq 'compatibility-manifest.json')) {
+                $manifestPath = Join-Path $env:RUNNER_TEMP "prior-manifest-$($asset.id).json"
+                $manifestErrorPath = Join-Path $env:RUNNER_TEMP "prior-manifest-$($asset.id).stderr.txt"
+                & gh release download ([string]$release.tag_name) --repo $env:GITHUB_REPOSITORY --pattern 'compatibility-manifest.json' --output $manifestPath 2> $manifestErrorPath
+                if ($LASTEXITCODE -ne 0) {
+                  $manifestError = if (Test-Path -LiteralPath $manifestErrorPath) { (@(Get-Content -LiteralPath $manifestErrorPath) -join "`n").Trim() } else { '' }
+                  throw "unable to read prior release manifest asset $($asset.id): $manifestError"
+                }
+                $priorManifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+                [uint64] $priorSequence = 0
+                if (-not [uint64]::TryParse([string]$priorManifest.sequence, [ref]$priorSequence) -or $priorSequence -eq 0) {
+                  throw "prior release manifest asset $($asset.id) has an invalid sequence"
+                }
+                if ($priorSequence -gt $highestExistingSequence) { $highestExistingSequence = $priorSequence }
+              }
+            }
+            $pageNumber++
+          } while ($releases.Count -eq 100)
+          if ($sequence -le $highestExistingSequence) {
+            throw "manifest sequence must exceed existing maximum $highestExistingSequence"
+          }
+          $issued = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+          if ($expires -le $issued) { throw 'manifest expiry must be in the future' }
+          "version=$($env:INPUT_VERSION)" >> $env:GITHUB_OUTPUT
+          "manifest_sequence=$sequence" >> $env:GITHUB_OUTPUT
+          "expires_unix=$expires" >> $env:GITHUB_OUTPUT
+          "issued_unix=$issued" >> $env:GITHUB_OUTPUT
+          "codex_version=0.148.0" >> $env:GITHUB_OUTPUT
+          "repository=$env:GITHUB_REPOSITORY" >> $env:GITHUB_OUTPUT
+
+  preflight:
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: codex-preflight-3ba0f711642a888aec92a611a3f3b2211157ff89-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Install pinned Rust toolchain
+        shell: pwsh
+        run: rustup toolchain install 1.95.0-x86_64-pc-windows-msvc --profile minimal --component rustfmt,clippy
+      - name: Dispatcher release gates
+        shell: pwsh
+        run: |
+          cargo +1.95.0-x86_64-pc-windows-msvc fmt --all -- --check
+          cargo +1.95.0-x86_64-pc-windows-msvc clippy --locked --all-targets -- -D warnings
+          cargo +1.95.0-x86_64-pc-windows-msvc test --locked -j 1
+      - name: Patch and required-package preflight
+        shell: pwsh
+        run: |
+          $upstream = Join-Path $env:RUNNER_TEMP 'codex-release-preflight'
+          $patch = Join-Path $env:GITHUB_WORKSPACE 'patches\codex\rust-v0.148.0\0001-desktop-composer.patch'
+          git clone --filter=blob:none https://github.com/openai/codex.git $upstream
+          git -C $upstream checkout 3ba0f711642a888aec92a611a3f3b2211157ff89
+          git -C $upstream apply --check $patch
+          .\scripts\refresh_codex_lock_ai.ps1 -UpstreamRoot $upstream
+          .\scripts\check_codex_tui_baseline_ai.ps1 -UpstreamRoot $upstream
+          git -C $upstream apply $patch
+          .\scripts\refresh_codex_lock_ai.ps1 -UpstreamRoot $upstream
+          cargo +1.95.0-x86_64-pc-windows-msvc check --locked `
+            --manifest-path (Join-Path $upstream 'codex-rs\Cargo.toml') `
+            -p codex-code-mode-host
+          .\scripts\check_codex_tui_baseline_ai.ps1 -UpstreamRoot $upstream -ExpectedPassed 3570
+
+  build-primary:
+    needs: [prepare, preflight]
+    runs-on: windows-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-about.exe
+          key: cargo-about-0.9.1-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Install pinned build tools
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.95.0-x86_64-pc-windows-msvc --profile minimal --component llvm-tools-preview
+          if (-not (Get-Command cargo-about -ErrorAction SilentlyContinue)) {
+            cargo install --locked --features cli cargo-about --version 0.9.1
+          }
+      - name: Build primary unsigned artifact set
+        shell: pwsh
+        env:
+          CLI_EDITOR_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          CLI_EDITOR_CODEX_VERSION: ${{ needs.prepare.outputs.codex_version }}
+          CLI_EDITOR_REPOSITORY: ${{ needs.prepare.outputs.repository }}
+          CLI_EDITOR_MANIFEST_SEQUENCE: ${{ needs.prepare.outputs.manifest_sequence }}
+          CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
+          CLI_EDITOR_ISSUED_UNIX: ${{ needs.prepare.outputs.issued_unix }}
+        run: |
+          .\scripts\build_release_ai.ps1 `
+            -Version $env:CLI_EDITOR_RELEASE_VERSION `
+            -CodexVersion $env:CLI_EDITOR_CODEX_VERSION `
+            -Repository $env:CLI_EDITOR_REPOSITORY `
+            -ManifestSequence ([uint64]$env:CLI_EDITOR_MANIFEST_SEQUENCE) `
+            -ExpiresUnix ([uint64]$env:CLI_EDITOR_EXPIRES_UNIX) `
+            -IssuedUnix ([uint64]$env:CLI_EDITOR_ISSUED_UNIX)
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: primary-unsigned-assets
+          path: .artifacts/
+          if-no-files-found: error
+          include-hidden-files: true
+
+  build-reproducibility:
+    needs: [prepare, preflight]
+    runs-on: windows-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/cache@1bd1e32a3bdc45362d1e726936510720a7c30a57 # v4.2.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-about.exe
+          key: cargo-about-0.9.1-${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+      - name: Install pinned build tools
+        shell: pwsh
+        run: |
+          rustup toolchain install 1.95.0-x86_64-pc-windows-msvc --profile minimal --component llvm-tools-preview
+          if (-not (Get-Command cargo-about -ErrorAction SilentlyContinue)) {
+            cargo install --locked --features cli cargo-about --version 0.9.1
+          }
+      - name: Independently rebuild primary unsigned artifact set
+        shell: pwsh
+        env:
+          CLI_EDITOR_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          CLI_EDITOR_CODEX_VERSION: ${{ needs.prepare.outputs.codex_version }}
+          CLI_EDITOR_REPOSITORY: ${{ needs.prepare.outputs.repository }}
+          CLI_EDITOR_MANIFEST_SEQUENCE: ${{ needs.prepare.outputs.manifest_sequence }}
+          CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
+          CLI_EDITOR_ISSUED_UNIX: ${{ needs.prepare.outputs.issued_unix }}
+        run: |
+          .\scripts\build_release_ai.ps1 `
+            -Version $env:CLI_EDITOR_RELEASE_VERSION `
+            -CodexVersion $env:CLI_EDITOR_CODEX_VERSION `
+            -Repository $env:CLI_EDITOR_REPOSITORY `
+            -ManifestSequence ([uint64]$env:CLI_EDITOR_MANIFEST_SEQUENCE) `
+            -ExpiresUnix ([uint64]$env:CLI_EDITOR_EXPIRES_UNIX) `
+            -IssuedUnix ([uint64]$env:CLI_EDITOR_ISSUED_UNIX)
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: reproducibility-unsigned-assets
+          path: .artifacts/
+          if-no-files-found: error
+          include-hidden-files: true
+
+  lifecycle-acceptance:
+    needs: sign-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: signed-release-assets
+          path: release-assets
+      - name: Install pinned native CLIs
+        shell: pwsh
+        run: npm install --global @openai/codex@0.148.0 @anthropic-ai/claude-code@2.1.240
+      - name: Exercise install, routing, restore, and uninstall
+        shell: pwsh
+        run: |
+          function UserPathSnapshot {
+            $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment')
+            try {
+              if ($null -eq $key -or $null -eq $key.GetValue('Path', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)) {
+                return [ordered]@{ exists = $false; kind = $null; data = $null }
+              }
+              return [ordered]@{
+                exists = $true
+                kind = $key.GetValueKind('Path').ToString()
+                data = [string]$key.GetValue('Path', $null, [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
+              }
+            } finally {
+              if ($null -ne $key) { $key.Dispose() }
+            }
+          }
+          $zip = Get-ChildItem release-assets -Recurse -Filter 'cli-editor-*-windows-x64.zip' -File | Select-Object -First 1
+          if ($null -eq $zip) { throw 'release ZIP was not downloaded' }
+          $extract = Join-Path $env:RUNNER_TEMP 'cli-editor-acceptance'
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath $extract
+          $editor = Get-ChildItem $extract -Recurse -Filter 'cli-editor.exe' -File | Select-Object -First 1
+          if ($null -eq $editor) { throw 'cli-editor.exe is absent from the release ZIP' }
+          $before = UserPathSnapshot | ConvertTo-Json -Compress
+          $ownedRoot = Join-Path $env:LOCALAPPDATA 'CLIEditor'
+          try {
+            & $editor.FullName install --dry-run
+            if ($LASTEXITCODE -ne 0) { throw 'install dry-run failed' }
+            & $editor.FullName install
+            if ($LASTEXITCODE -ne 0) { throw 'install failed' }
+            $shims = Join-Path $ownedRoot 'shims'
+            $env:PATH = "$shims;$env:PATH"
+            & $editor.FullName status
+            if ($LASTEXITCODE -ne 0) { throw 'status failed after install' }
+            & $editor.FullName doctor --json
+            if ($LASTEXITCODE -ne 0) { throw 'doctor failed after install' }
+            function LaunchSamples([string] $CommandPath, [int] $Count = 30) {
+              1..3 | ForEach-Object {
+                & $CommandPath --version *> $null
+                if ($LASTEXITCODE -ne 0) { throw "warmup failed for $CommandPath" }
+              }
+              @(1..$Count | ForEach-Object {
+                $watch = [Diagnostics.Stopwatch]::StartNew()
+                & $CommandPath --version *> $null
+                $watch.Stop()
+                if ($LASTEXITCODE -ne 0) { throw "performance sample failed for $CommandPath" }
+                $watch.Elapsed.TotalMilliseconds
+              })
+            }
+            function Percentile95([double[]] $Samples) {
+              $ordered = @($Samples | Sort-Object)
+              $index = [Math]::Min($ordered.Count - 1, [Math]::Ceiling($ordered.Count * 0.95) - 1)
+              [double]$ordered[$index]
+            }
+            $state = Get-Content -LiteralPath (Join-Path $ownedRoot 'state.json') -Raw | ConvertFrom-Json
+            foreach ($route in @(
+              @{ Name = 'codex'; Native = [string]$state.native_targets.codex.path; Shim = (Join-Path $shims 'codex.exe') },
+              @{ Name = 'claude'; Native = [string]$state.native_targets.claude.path; Shim = (Join-Path $shims 'claude.exe') }
+            )) {
+              $nativeP95 = Percentile95 (LaunchSamples $route.Native)
+              $wrappedP95 = Percentile95 (LaunchSamples $route.Shim)
+              $overhead = $wrappedP95 - $nativeP95
+              Write-Output ("{0} launch p95: native={1:N1}ms wrapped={2:N1}ms overhead={3:N1}ms" -f $route.Name, $nativeP95, $wrappedP95, $overhead)
+              if ($overhead -gt 50) { throw "$($route.Name) dispatcher p95 overhead exceeded 50 ms" }
+            }
+            & $editor.FullName default all --strict
+            if ($LASTEXITCODE -ne 0) { throw 'default all failed' }
+            & (Join-Path $shims 'codex.exe') --version
+            if ($LASTEXITCODE -ne 0) { throw 'default enhanced Codex route failed' }
+            & (Join-Path $shims 'claude.exe') --version
+            if ($LASTEXITCODE -ne 0) { throw 'default managed Claude route failed' }
+            & (Join-Path $shims 'codex.exe') cli-editor --version
+            if ($LASTEXITCODE -ne 0) { throw 'explicit enhanced Codex route failed' }
+            & (Join-Path $shims 'claude.exe') cli-editor --version
+            if ($LASTEXITCODE -ne 0) { throw 'explicit managed Claude route failed' }
+            & $editor.FullName restore all
+            if ($LASTEXITCODE -ne 0) { throw 'restore all failed' }
+            & (Join-Path $shims 'codex.exe') --version
+            if ($LASTEXITCODE -ne 0) { throw 'restored native Codex route failed' }
+            & (Join-Path $shims 'claude.exe') --version
+            if ($LASTEXITCODE -ne 0) { throw 'restored native Claude route failed' }
+            & (Join-Path $shims 'cli-editor.exe') uninstall
+            if ($LASTEXITCODE -ne 0) { throw 'installed-shim self-uninstall failed' }
+            if (Test-Path -LiteralPath (Join-Path $ownedRoot 'state.json')) { throw 'self-uninstall left active state' }
+            foreach ($name in @('cli-editor.exe', 'codex.exe', 'claude.exe')) {
+              if (Test-Path -LiteralPath (Join-Path $shims $name)) { throw "self-uninstall left an active shim at $name" }
+            }
+            if (Test-Path -LiteralPath $ownedRoot) {
+              $residue = @(Get-ChildItem -LiteralPath $ownedRoot -Recurse -Force -File)
+              $unexpected = @($residue | Where-Object { $_.Name -notmatch '^\.pending-delete\.\d+\.\d+\.exe$' })
+              if ($unexpected.Count -ne 0 -or $residue.Count -gt 1) {
+                throw "self-uninstall left unexpected owned residue: $($residue.FullName -join ', ')"
+              }
+              Write-Output "self-uninstall reported and isolated its running-image residue: $($residue.FullName -join ', ')"
+              Remove-Item -LiteralPath $ownedRoot -Recurse -Force
+            }
+          } finally {
+            if (Test-Path -LiteralPath $ownedRoot) { & $editor.FullName uninstall }
+          }
+          $after = UserPathSnapshot | ConvertTo-Json -Compress
+          if ($after -ne $before) { throw "user PATH was not restored exactly: before=$before after=$after" }
+          if (Test-Path -LiteralPath $ownedRoot) { throw "owned installation residue remains at $ownedRoot" }
+  verify-reproducibility:
+    needs: [build-primary, build-reproducibility]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: primary-unsigned-assets
+          path: primary
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: reproducibility-unsigned-assets
+          path: reproducibility
+      - name: Require bit-for-bit artifact parity
+        shell: pwsh
+        run: |
+          function Inventory([string] $Root) {
+            $fullRoot = [IO.Path]::GetFullPath($Root).TrimEnd([IO.Path]::DirectorySeparatorChar)
+            Get-ChildItem -LiteralPath $fullRoot -Recurse -File | ForEach-Object {
+              [pscustomobject]@{
+                Relative = $_.FullName.Substring($fullRoot.Length + 1)
+                Hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash
+              }
+            } | Sort-Object Relative
+          }
+          $primary = Inventory 'primary' | ConvertTo-Json -Compress
+          $repro = Inventory 'reproducibility' | ConvertTo-Json -Compress
+          if ($primary -ne $repro) { throw 'independent release rebuild was not bit-for-bit reproducible' }
+
+  sign-release:
+    needs: [prepare, verify-reproducibility]
+    runs-on: windows-latest
+    environment: release
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: primary-unsigned-assets
+          path: .artifacts
+      - name: Sign and finalize verified release assets
+        shell: pwsh
+        env:
+          CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX: ${{ secrets.CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX }}
+          CLI_EDITOR_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          CLI_EDITOR_ISSUED_UNIX: ${{ needs.prepare.outputs.issued_unix }}
+          CLI_EDITOR_MANIFEST_SEQUENCE: ${{ needs.prepare.outputs.manifest_sequence }}
+          CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
+        run: |
+          .\scripts\finalize_release_ai.ps1 `
+            -Version $env:CLI_EDITOR_RELEASE_VERSION `
+            -IssuedUnix ([uint64]$env:CLI_EDITOR_ISSUED_UNIX) `
+            -ManifestSequence ([uint64]$env:CLI_EDITOR_MANIFEST_SEQUENCE) `
+            -ExpiresUnix ([uint64]$env:CLI_EDITOR_EXPIRES_UNIX)
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: signed-release-assets
+          path: |
+            .artifacts/
+            !.artifacts/release-tools/**
+          if-no-files-found: error
+          include-hidden-files: true
+  publish-draft:
+    needs: [prepare, sign-release, lifecycle-acceptance]
+    runs-on: windows-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: signed-release-assets
+          path: .artifacts
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            .artifacts/*.zip
+            .artifacts/*.sha256
+      - name: Attest CycloneDX SBOM
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: .artifacts/cli-editor-${{ needs.prepare.outputs.version }}-windows-x64.zip
+          sbom-path: .artifacts/cli-editor-${{ needs.prepare.outputs.version }}.sbom.json
+      - name: Publish GitHub draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLI_EDITOR_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          CLI_EDITOR_CODEX_VERSION: ${{ needs.prepare.outputs.codex_version }}
+          CLI_EDITOR_REPOSITORY: ${{ needs.prepare.outputs.repository }}
+        run: |
+          $assets = Get-ChildItem .artifacts -Recurse -File |
+            Where-Object Name -ne 'public-key.generated.hex' |
+            ForEach-Object FullName
+          gh release create "cli-editor-v$env:CLI_EDITOR_RELEASE_VERSION-codex$env:CLI_EDITOR_CODEX_VERSION" $assets `
+            --repo $env:CLI_EDITOR_REPOSITORY `
+            --target $env:GITHUB_SHA `
+            --title "CLI Editor v$env:CLI_EDITOR_RELEASE_VERSION" `
+            --notes-file RELEASE_NOTES_ai.md `
+            --draft

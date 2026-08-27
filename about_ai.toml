@@ -1,0 +1,26 @@
+accepted = [
+  "Apache-2.0",
+  "MIT",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+  "Zlib",
+  "MPL-2.0",
+  "BSL-1.0",
+  "CC0-1.0",
+  "Unlicense",
+  "OpenSSL",
+  "CDLA-Permissive-2.0",
+]
+targets = ["x86_64-pc-windows-msvc"]
+ignore-build-dependencies = false
+ignore-dev-dependencies = true
+ignore-transitive-dependencies = false
+
+[ring]
+accepted = ["OpenSSL"]
+
+[unicode-ident]
+accepted = ["Unicode-DFS-2016"]

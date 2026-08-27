@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CLI Editor compatibility manifest",
+  "type": "object",
+  "required": ["schema_version", "sequence", "issued_unix", "expires_unix", "minimum_dispatcher_version", "compatibility", "artifacts"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "sequence": { "type": "integer", "minimum": 1 },
+    "issued_unix": { "type": "integer", "minimum": 0 },
+    "expires_unix": { "type": "integer", "minimum": 0 },
+    "minimum_dispatcher_version": { "type": "string" },
+    "compatibility": { "type": "array" },
+    "artifacts": { "type": "array" }
+  },
+  "additionalProperties": false
+}

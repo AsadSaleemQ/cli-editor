@@ -1937,6 +1937,41 @@ index 983443f3423323bdfbbb8a8fb0553d9813651b65..251a93c66c31f3943eca38fa357b4292
      Ok(())
  }
 
+diff --git a/codex-rs/tui/src/startup_draft_tests.rs b/codex-rs/tui/src/startup_draft_tests.rs
+index d037731f7fdf2d1b6f741fa390129100b7acde2d..c4f85fa64efbc11f1101b02f4e30c7e8fca82c53 100644
+--- a/codex-rs/tui/src/startup_draft_tests.rs
++++ b/codex-rs/tui/src/startup_draft_tests.rs
+@@ -466,7 +466,6 @@ fn startup_draft_allows_local_editor_shortcuts_without_startup_actions() {
+             KeyEvent::new(KeyCode::Char('b'), KeyModifiers::ALT),
+             "first ".len(),
+         ),
+-        (KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL), 0),
+         (
+             KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL),
+             "first second".len(),
+@@ -475,6 +474,22 @@ fn startup_draft_allows_local_editor_shortcuts_without_startup_actions() {
+         handle_startup_draft_key(&mut pump.bottom_pane, key).expect("apply editor movement");
+         assert_eq!(pump.bottom_pane.composer_cursor(), expected_cursor);
+     }
++    handle_startup_draft_key(
++        &mut pump.bottom_pane,
++        KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL),
++    )
++    .expect("select the startup draft");
++    assert_eq!(
++        pump.bottom_pane.selected_composer_text(),
++        Some("first second")
++    );
++    handle_startup_draft_key(
++        &mut pump.bottom_pane,
++        KeyEvent::new(KeyCode::Right, KeyModifiers::NONE),
++    )
++    .expect("collapse the startup selection");
++    assert_eq!(pump.bottom_pane.composer_cursor(), "first second".len());
++
+     handle_startup_draft_key(
+         &mut pump.bottom_pane,
+         KeyEvent::new(KeyCode::Char('w'), KeyModifiers::CONTROL),
 diff --git a/codex-rs/tui/src/startup_hooks_review.rs b/codex-rs/tui/src/startup_hooks_review.rs
 index 4a8f6433380eccd0230093f4048e8df7f923d6e1..f9372730e1c0b071632e1cefa1a44665768d506e 100644
 --- a/codex-rs/tui/src/startup_hooks_review.rs

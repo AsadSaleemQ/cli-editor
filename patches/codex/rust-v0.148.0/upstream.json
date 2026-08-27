@@ -3,9 +3,9 @@
     "commit":  "3ba0f711642a888aec92a611a3f3b2211157ff89",
     "tree":  "5d80f78b1760fc1b3a0d702a50cfef479b68426c",
     "patch":  "0001-desktop-composer.patch",
-    "patch_sha256":  "d4ab7e6841363e7fc269d34d262761571680efcf1cb0ba684de29db8c1e7b199",
-    "patch_bytes":  103464,
-    "patch_files":  37,
+    "patch_sha256":  "09366ede4de32f98d608d960bf87b137ca91691bc27fb25511c30338c10bcaed",
+    "patch_bytes":  105082,
+    "patch_files":  38,
     "purpose":  "Desktop-style composer selection, clipboard, mouse, and touchpad behavior",
     "validation":  {
                        "reverse_apply_check":  true,

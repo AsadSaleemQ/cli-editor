@@ -5,12 +5,15 @@ $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 Push-Location $root
 try {
-    $files = @(git ls-files --cached --others --exclude-standard)
+    $files = @(
+        git -c core.quotepath=false ls-files --cached --others --exclude-standard |
+            ForEach-Object { ([string] $_).TrimEnd("`r") }
+    )
     if ($LASTEXITCODE -ne 0 -or $files.Count -eq 0) { throw 'Unable to enumerate the publication candidate' }
     $findings = [Collections.Generic.List[object]]::new()
     $totalBytes = 0L
     foreach ($file in $files) {
-        $item = Get-Item -LiteralPath $file
+        $item = Get-Item -LiteralPath (Join-Path $root $file)
         $totalBytes += $item.Length
         if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
             $findings.Add([pscustomobject]@{ Kind = 'reparse-point'; File = $file; Line = 0 })

@@ -6,7 +6,7 @@ Date: 2026-08-27
 
 - Platform: Windows terminals, including the integrated VS Code terminal.
 - Enhanced Codex: upstream `rust-v0.148.0`, commit `3ba0f711642a888aec92a611a3f3b2211157ff89`.
-- Codex patch: 36 files, 100,706 bytes, SHA-256 `b2c158a5c0cb65b3e6840402a69d8af9dc212223db26218a9962560dd851aa89`.
+- Codex patch: 38 files, 127,793 bytes, SHA-256 `e29e31f31f78f234db0ddccc4665b1dd3e2ff641246e4755c3013bce0dfa8789`.
 - Claude Code: native pass-through only; Claude is not patched or redistributed.
 - Release toolchain: Rust 1.95.0, Windows MSVC.
 

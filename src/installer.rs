@@ -64,6 +64,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
     let helper_source = source_directory.join("codex-code-mode-host.exe");
     let manifest_source = source_directory.join("compatibility-manifest.json");
     let signature_source = source_directory.join("compatibility-manifest.sig");
+    let vscode_extension_source = source_directory.join("cli-editor-vscode.vsix");
     let verified = verify_release_bundle(
         source_directory,
         &source_dispatcher,
@@ -72,6 +73,16 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         &manifest_source,
         &signature_source,
         0,
+    )?;
+    if !vscode_extension_source.is_file() {
+        return Err(CliEditorError::MissingReleaseArtifact(
+            vscode_extension_source,
+        ));
+    }
+    verify_declared_artifact(
+        &verified,
+        "cli-editor-vscode.vsix",
+        &vscode_extension_source,
     )?;
     if let Some(codex) = native_targets.get(&CliKind::Codex) {
         let version = normalized_version(&codex.version);
@@ -97,12 +108,20 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         return Ok(());
     }
 
+    let vscode_extension = crate::vscode::install(&vscode_extension_source)?;
+    if vscode_extension == crate::vscode::InstallOutcome::Unavailable {
+        eprintln!(
+            "warning: VS Code was not discovered; the prompt-aware Ctrl+Home/End bridge was not installed"
+        );
+    }
+    let vscode_extension_added = vscode_extension == crate::vscode::InstallOutcome::Added;
     let rollback_path = RefCell::new(None);
     let new_install_started = Cell::new(false);
     let existing_manifest_sequence = Cell::new(0);
     let result = store.transaction(|current| {
-        if let Some(existing) = current {
+        if let Some(mut existing) = current {
             existing_manifest_sequence.set(existing.highest_manifest_sequence);
+            existing.vscode_extension_added |= vscode_extension_added;
             return Ok((existing, false));
         }
         new_install_started.set(true);
@@ -163,6 +182,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         state.pre_install_user_path = Some(path_snapshot);
         state.shim_directory = Some(shim_directory.clone());
         state.path_entry_added = path_changed;
+        state.vscode_extension_added = vscode_extension_added;
         state.native_targets = native_targets;
         state.highest_manifest_sequence = verified.manifest.sequence;
         state.manifest_cache = Some(ManifestCacheRecord {
@@ -189,6 +209,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
     });
 
     if result.is_err() {
+        let _ = crate::vscode::uninstall_if_owned(vscode_extension_added);
         if let Some(snapshot) = rollback_path.into_inner() {
             let _ = restore_user_path(&snapshot);
         }
@@ -198,6 +219,9 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
     }
     if result? {
         println!("CLI Editor installed successfully.");
+        if vscode_extension != crate::vscode::InstallOutcome::Unavailable {
+            println!("  reload VS Code once to activate prompt-aware Ctrl+Home/End routing");
+        }
         println!("  shims: {}", shim_directory.display());
         println!(
             "  run `cli-editor doctor` in a new PowerShell terminal; it reports if a machine-scope command outranks the per-user shim"
@@ -237,6 +261,7 @@ struct ReleaseBundle {
     dispatcher: PathBuf,
     enhanced: PathBuf,
     helper: PathBuf,
+    vscode_extension: PathBuf,
     manifest: PathBuf,
     signature: PathBuf,
 }
@@ -250,6 +275,7 @@ impl ReleaseBundle {
             dispatcher: directory.join("cli-editor.exe"),
             enhanced: directory.join("codex-enhanced.exe"),
             helper: directory.join("codex-code-mode-host.exe"),
+            vscode_extension: directory.join("cli-editor-vscode.vsix"),
             manifest: directory.join("compatibility-manifest.json"),
             signature: directory.join("compatibility-manifest.sig"),
         })
@@ -292,6 +318,11 @@ where
         &bundle.manifest,
         &bundle.signature,
         prepared.highest_manifest_sequence,
+    )?;
+    verify_declared_artifact(
+        &verified,
+        "cli-editor-vscode.vsix",
+        &bundle.vscode_extension,
     )?;
     if verified.manifest.sequence <= prepared.highest_manifest_sequence {
         return Err(CliEditorError::NoUpdateAvailable);
@@ -343,6 +374,10 @@ where
         atomic_copy(&bundle.enhanced, &staging.join("codex.exe"))?;
         atomic_copy(&bundle.helper, &staging.join("codex-code-mode-host.exe"))?;
         atomic_copy(
+            &bundle.vscode_extension,
+            &staging.join("cli-editor-vscode.vsix"),
+        )?;
+        atomic_copy(
             &bundle.manifest,
             &staging.join("compatibility-manifest.json"),
         )?;
@@ -356,6 +391,11 @@ where
             &verified,
             "codex-code-mode-host.exe",
             &staging.join("codex-code-mode-host.exe"),
+        )?;
+        verify_declared_artifact(
+            &verified,
+            "cli-editor-vscode.vsix",
+            &staging.join("cli-editor-vscode.vsix"),
         )?;
         Ok::<_, CliEditorError>(())
     })();
@@ -376,6 +416,8 @@ where
         let _ = std::fs::remove_dir_all(&staging);
         return Err(CliEditorError::UnsupportedCodexVersion(codex_version));
     }
+
+    crate::vscode::update_if_owned(&bundle.vscode_extension, prepared.vscode_extension_added)?;
 
     let rollback_directory = store.root().join(format!(
         ".update-rollback.{}.{:032x}",
@@ -1102,6 +1144,11 @@ pub(crate) fn uninstall() -> Result<()> {
     let store = StateStore::for_current_user()?;
     let root = store.root().to_path_buf();
     store.remove_with(|state| {
+        if let Err(error) = crate::vscode::uninstall_if_owned(state.vscode_extension_added) {
+            eprintln!(
+                "warning: {error}; core CLI Editor cleanup will continue, but the terminal bridge may need manual removal"
+            );
+        }
         if state.path_entry_added
             && let (Some(snapshot), Some(shims)) =
                 (&state.pre_install_user_path, &state.shim_directory)
@@ -1748,13 +1795,16 @@ mod tests {
         let dispatcher = directory.path().join("cli-editor.exe");
         let enhanced = directory.path().join("codex-enhanced.exe");
         let helper = directory.path().join("codex-code-mode-host.exe");
+        let vscode_extension = directory.path().join("cli-editor-vscode.vsix");
         std::fs::write(&dispatcher, b"dispatcher").unwrap();
         std::fs::write(&enhanced, b"enhanced").unwrap();
         std::fs::write(&helper, b"helper").unwrap();
+        std::fs::write(&vscode_extension, b"vsix").unwrap();
         let artifacts = [
             ("cli-editor.exe", &dispatcher),
             ("codex-enhanced.exe", &enhanced),
             ("codex-code-mode-host.exe", &helper),
+            ("cli-editor-vscode.vsix", &vscode_extension),
         ]
         .into_iter()
         .map(|(name, path)| Artifact {
@@ -1869,9 +1919,11 @@ mod tests {
         let dispatcher = bundle.join("cli-editor.exe");
         let enhanced = bundle.join("codex-enhanced.exe");
         let helper = bundle.join("codex-code-mode-host.exe");
+        let vscode_extension = bundle.join("cli-editor-vscode.vsix");
         std::fs::copy(&current, &dispatcher).unwrap();
         std::fs::copy(&current, &enhanced).unwrap();
         std::fs::write(&helper, b"helper").unwrap();
+        std::fs::write(&vscode_extension, b"vsix").unwrap();
         let codex_version = "0.149.0".to_owned();
         state
             .native_targets
@@ -1884,6 +1936,7 @@ mod tests {
             ("cli-editor.exe", &dispatcher),
             ("codex-enhanced.exe", &enhanced),
             ("codex-code-mode-host.exe", &helper),
+            ("cli-editor-vscode.vsix", &vscode_extension),
         ]
         .into_iter()
         .map(|(name, path)| Artifact {

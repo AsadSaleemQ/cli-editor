@@ -98,6 +98,8 @@ pub enum CliEditorError {
     NoUpdateAvailable,
     #[error("run the cli-editor.exe from the new external release bundle to update the dispatcher")]
     ExternalUpdaterRequired,
+    #[error("VS Code terminal bridge error: {0}")]
+    VscodeBridge(String),
     #[error("I/O error at {path}: {source}")]
     Io {
         path: PathBuf,

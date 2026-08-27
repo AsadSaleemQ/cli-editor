@@ -9,6 +9,7 @@ mod process;
 mod registry;
 mod state;
 mod version;
+mod vscode;
 use clap::Parser;
 use cli::Cli;
 use cli::Command;

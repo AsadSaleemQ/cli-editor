@@ -1,0 +1,27 @@
+{
+  "name": "cli-editor-vscode",
+  "displayName": "CLI Editor Terminal Bridge",
+  "description": "Routes prompt-boundary keys only while CLI Editor owns the active Codex prompt.",
+  "version": "0.1.0",
+  "publisher": "asadsaleemq",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onCommand:cliEditor.promptHome",
+    "onCommand:cliEditor.promptEnd"
+  ],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      { "command": "cliEditor.promptHome", "title": "CLI Editor: Prompt Start or Terminal Top" },
+      { "command": "cliEditor.promptEnd", "title": "CLI Editor: Prompt End or Terminal Bottom" }
+    ],
+    "keybindings": [
+      { "command": "cliEditor.promptHome", "key": "ctrl+home", "when": "terminalFocus" },
+      { "command": "cliEditor.promptEnd", "key": "ctrl+end", "when": "terminalFocus" }
+    ]
+  }
+}

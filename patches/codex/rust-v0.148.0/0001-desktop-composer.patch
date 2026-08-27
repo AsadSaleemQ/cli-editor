@@ -1,5 +1,5 @@
 diff --git a/codex-rs/tui/src/app.rs b/codex-rs/tui/src/app.rs
-index a947f240cf03045d0976907c196bcfba9480ec6b..8b0a9369f4d2f1983f19dd0bdfdfb1e76ca67e60 100644
+index a947f240cf03045d0976907c196bcfba9480ec6b..adcbada0787518b22a5dcea4c2dfcfa5a8231121 100644
 --- a/codex-rs/tui/src/app.rs
 +++ b/codex-rs/tui/src/app.rs
 @@ -756,7 +756,17 @@ impl App {
@@ -21,17 +21,27 @@ index a947f240cf03045d0976907c196bcfba9480ec6b..8b0a9369f4d2f1983f19dd0bdfdfb1e7
              self.expire_pending_key_chord();
              self.handle_draw_pre_render(tui, screen_size)?;
          }
-@@ -788,6 +798,9 @@ impl App {
+@@ -788,6 +798,19 @@ impl App {
                      let pasted = pasted.replace("\r\n", "\n").replace('\r', "\n");
                      self.chat_widget.handle_paste(pasted);
                  }
 +                TuiEvent::Mouse(mouse_event) => {
-+                    self.chat_widget.handle_mouse_event(mouse_event);
++                    let handled = self.chat_widget.handle_mouse_event(mouse_event);
++                    if matches!(
++                        mouse_event.kind,
++                        crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left)
++                    ) {
++                        if handled {
++                            tui.restore_mouse_capture_for_composer()?;
++                        } else {
++                            tui.release_mouse_capture_for_scrollback()?;
++                        }
++                    }
 +                }
                  TuiEvent::Draw | TuiEvent::Resume | TuiEvent::Resize(_) => {
                      if self.backtrack_render_pending {
                          self.rebuild_transcript_after_backtrack(tui, screen_size.into())?;
-@@ -863,7 +876,7 @@ impl App {
+@@ -863,7 +886,7 @@ impl App {
                  let area = frame.area();
                  rendered_area = area;
                  chat_widget.render(area, frame.buffer);
@@ -68,13 +78,13 @@ index 97d5bb6977a8d2358ac31cf97a6a54eb4469e1e1..9f2e1d4b49617131c926c4c10ef1479a
                      AppRunControl::Continue => {
                          if app_event_rx.is_empty() && !app.has_queued_startup_protected_request() {
 diff --git a/codex-rs/tui/src/app/tests.rs b/codex-rs/tui/src/app/tests.rs
-index 95fbd2f4b17232c0993a9e9083e3a887feae0129..174130164999c21200afe8ea1544dfee2bda2686 100644
+index 95fbd2f4b17232c0993a9e9083e3a887feae0129..04d73dbf6a709f53084356b7b0969798045ee711 100644
 --- a/codex-rs/tui/src/app/tests.rs
 +++ b/codex-rs/tui/src/app/tests.rs
-@@ -221,6 +221,33 @@ async fn chat_widget_frame_reuses_active_cell_height_across_frame_passes() {
+@@ -221,6 +221,44 @@ async fn chat_widget_frame_reuses_active_cell_height_across_frame_passes() {
      assert_eq!(desired_height_calls.load(Ordering::Relaxed), 1);
  }
- 
+
 +#[tokio::test]
 +async fn rendered_chat_widget_routes_mouse_clicks_to_the_composer() -> Result<()> {
 +    let mut app = make_test_app().await;
@@ -89,13 +99,24 @@ index 95fbd2f4b17232c0993a9e9083e3a887feae0129..174130164999c21200afe8ea1544dfee
 +        .cursor_pos(rendered_area)
 +        .expect("composer cursor should be visible after rendering");
 +
-+    app.chat_widget
-+        .handle_mouse_event(crossterm::event::MouseEvent {
-+            kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
-+            column: cursor_x.saturating_sub(3),
-+            row: cursor_y,
-+            modifiers: KeyModifiers::NONE,
-+        });
++    assert!(
++        app.chat_widget
++            .handle_mouse_event(crossterm::event::MouseEvent {
++                kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
++                column: cursor_x.saturating_sub(3),
++                row: cursor_y,
++                modifiers: KeyModifiers::NONE,
++            })
++    );
++    assert!(
++        !app.chat_widget
++            .handle_mouse_event(crossterm::event::MouseEvent {
++                kind: crossterm::event::MouseEventKind::Down(crossterm::event::MouseButton::Left),
++                column: u16::MAX,
++                row: u16::MAX,
++                modifiers: KeyModifiers::NONE,
++            })
++    );
 +    app.chat_widget.handle_paste("X".to_string());
 +
 +    assert_eq!(app.chat_widget.composer_text_with_pending(), "abcXdef");
@@ -124,7 +145,7 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
  /// placeholder in the UI.
  const LARGE_PASTE_CHAR_THRESHOLD: usize = 1000;
 +const COMPOSER_UNDO_LIMIT: usize = 100;
- 
+
  fn user_input_too_large_message(actual_chars: usize) -> String {
      format!(
 @@ -517,6 +521,11 @@ pub(crate) struct ChatComposer {
@@ -137,7 +158,7 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
 +    redo_stack: VecDeque<ComposerDraft>,
 +    edit_transaction_depth: usize,
  }
- 
+
  /// A resolved legacy `$` target plus any catalog built while disambiguating shell syntax.
 @@ -706,6 +715,11 @@ impl ChatComposer {
              history_search_next_keys: default_keymap.composer.history_search_next.clone(),
@@ -170,11 +191,11 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
 +        self.finish_edit_transaction(undo_before, /*record*/ true);
          true
      }
- 
+
 @@ -1605,6 +1623,63 @@ impl ChatComposer {
          }
      }
- 
+
 +    fn draft_content_matches(&self, draft: &ComposerDraft) -> bool {
 +        self.current_text() == draft.text
 +            && self.current_text_elements() == draft.text_elements
@@ -238,7 +259,7 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
 @@ -1712,6 +1787,10 @@ impl ChatComposer {
          }
      }
- 
+
 +    pub(crate) fn selected_text(&self) -> Option<&str> {
 +        self.draft.textarea.selected_text()
 +    }
@@ -247,7 +268,7 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
      ///
      /// This path restores text, elements, images, mention bindings, and pending paste payloads,
 @@ -1791,8 +1870,10 @@ impl ChatComposer {
- 
+
      /// Insert an attachment placeholder and track it for the next submission.
      pub fn attach_image(&mut self, path: PathBuf) {
 +        let undo_before = self.begin_edit_transaction();
@@ -255,11 +276,11 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
              .attach_image(&mut self.draft.textarea, path);
 +        self.finish_edit_transaction(undo_before, /*record*/ true);
      }
- 
+
      #[cfg(test)]
 @@ -1918,9 +1999,105 @@ impl ChatComposer {
      }
- 
+
      pub(crate) fn insert_str(&mut self, text: &str) {
 +        let undo_before = self.begin_edit_transaction();
 +        let elements_before = self.draft.textarea.element_payloads();
@@ -361,12 +382,12 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
 +            _ => false,
 +        }
      }
- 
+
      /// Handle a key event coming from the main UI.
 @@ -1933,6 +2110,26 @@ impl ChatComposer {
              return (InputResult::None, false);
          }
- 
+
 +        if let KeyEvent {
 +            code: KeyCode::Char(c),
 +            modifiers: KeyModifiers::CONTROL,
@@ -393,7 +414,7 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
 @@ -1941,6 +2138,7 @@ impl ChatComposer {
              return self.begin_history_search();
          }
- 
+
 +        let undo_before = self.begin_edit_transaction();
          let result = match &mut self.popups.active {
              ActivePopup::Command(_) => self.handle_key_event_with_slash_popup(key_event),
@@ -408,7 +429,7 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
 +        );
          result
      }
- 
+
 +    pub(crate) fn handle_startup_editor_key(&mut self, key_event: KeyEvent) -> bool {
 +        if !self.draft.input_enabled {
 +            return false;
@@ -430,7 +451,7 @@ index 63b5bd4cdfc4ede0cc1258b6b4d3ced456ce7612..bf00413948f7a6f5af6c392d4629c585
 @@ -4928,6 +5145,37 @@ mod tests {
          )
      }
- 
+
 +    #[test]
 +    fn desktop_editing_undo_and_redo_restore_composer_text() {
 +        let (mut composer, _rx) = new_test_composer();
@@ -493,7 +514,7 @@ index 690024f93a78788959a1f19971cd0203fa741981..44ab60c6dcd726efd58b43b95df567a9
 @@ -781,6 +782,45 @@ impl BottomPane {
          self.request_redraw();
      }
- 
+
 +    pub(crate) fn delete_composer_selection(&mut self) -> bool {
 +        let changed = self.composer.delete_selection();
 +        if changed {
@@ -539,7 +560,7 @@ index 690024f93a78788959a1f19971cd0203fa741981..44ab60c6dcd726efd58b43b95df567a9
 @@ -890,6 +930,10 @@ impl BottomPane {
          self.composer.current_text()
      }
- 
+
 +    pub(crate) fn selected_composer_text(&self) -> Option<&str> {
 +        self.composer.selected_text()
 +    }
@@ -645,7 +666,7 @@ index 86b73cb729df06fd636faa4af79cb972b310b9d3..ec1d625eec7b4f5203be0090bb448d40
 @@ -54,6 +54,14 @@ impl BottomPane {
          .any(|bindings| bindings.is_pressed(key_event))
      }
- 
+
 +    /// Apply a startup-safe editor binding without desktop shortcut overrides.
 +    pub(crate) fn handle_startup_editor_key(&mut self, key_event: KeyEvent) {
 +        self.flush_composer_paste_burst();
@@ -658,7 +679,7 @@ index 86b73cb729df06fd636faa4af79cb972b310b9d3..ec1d625eec7b4f5203be0090bb448d40
      pub(crate) fn enable_vim_in_insert_mode(&mut self) {
          self.composer.enable_vim_in_insert_mode();
 diff --git a/codex-rs/tui/src/bottom_pane/textarea.rs b/codex-rs/tui/src/bottom_pane/textarea.rs
-index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365d1c01e6e 100644
+index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..ef8b7df23a3dc60450afadc8cfccbb51820c5f88 100644
 --- a/codex-rs/tui/src/bottom_pane/textarea.rs
 +++ b/codex-rs/tui/src/bottom_pane/textarea.rs
 @@ -1,5 +1,5 @@
@@ -694,7 +715,7 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
 @@ -41,8 +49,10 @@ use std::cell::RefCell;
  use std::ops::Range;
  use unicode_segmentation::UnicodeSegmentation;
- 
+
 +mod selection;
  mod vim;
  mod wrapping;
@@ -744,7 +765,7 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
              self.preferred_col = None;
 @@ -370,10 +385,15 @@ impl TextArea {
      }
- 
+
      pub fn insert_str(&mut self, text: &str) {
 +        if let Some(range) = self.selection_range() {
 +            self.replace_range(range, text);
@@ -752,7 +773,7 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
 +        }
          self.insert_str_at(self.cursor_pos, text);
      }
- 
+
      pub fn insert_str_at(&mut self, pos: usize, text: &str) {
 +        self.selection.clear();
          let pos = self.clamp_pos_for_insertion(pos);
@@ -764,18 +785,18 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
          }
 +        self.selection.clear();
          let diff = inserted_len as isize - removed_len as isize;
- 
+
          self.text.replace_range(range, text);
 @@ -427,11 +448,130 @@ impl TextArea {
      }
- 
+
      pub fn set_cursor(&mut self, pos: usize) {
 +        self.selection.clear();
          self.cursor_pos = pos.clamp(0, self.text.len());
          self.cursor_pos = self.clamp_pos_to_nearest_boundary(self.cursor_pos);
          self.preferred_col = None;
      }
- 
+
 +    pub(crate) fn selection_range(&self) -> Option<Range<usize>> {
 +        self.selection.range(self.cursor_pos)
 +    }
@@ -899,7 +920,7 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
      }
 @@ -539,6 +679,101 @@ impl TextArea {
      }
- 
+
      pub fn input_with_keymap(&mut self, event: KeyEvent, keymap: &EditorKeymap) {
 +        self.input_with_keymap_inner(event, keymap, /*desktop_shortcuts*/ true);
 +    }
@@ -909,7 +930,7 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
 +            return;
 +        }
 +        let keymap = self.editor_keymap.clone();
-+        self.input_with_keymap_inner(event, &keymap, /*desktop_shortcuts*/ false);
++        self.input_with_keymap_inner(event, &keymap, /*desktop_shortcuts*/ true);
 +    }
 +
 +    fn input_with_keymap_inner(
@@ -1031,7 +1052,7 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
              return;
          }
 @@ -1002,7 +1247,13 @@ impl TextArea {
- 
+
      // ####### Input Functions #######
      pub fn delete_backward(&mut self, n: usize) {
 -        if n == 0 || self.cursor_pos == 0 {
@@ -1047,7 +1068,7 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
          let mut target = self.cursor_pos;
 @@ -1031,7 +1282,13 @@ impl TextArea {
      }
- 
+
      pub fn delete_forward(&mut self, n: usize) {
 -        if n == 0 || self.cursor_pos >= self.text.len() {
 +        if n == 0 {
@@ -1062,7 +1083,7 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
          let mut target = self.cursor_pos;
 @@ -1059,6 +1316,9 @@ impl TextArea {
      }
- 
+
      pub fn delete_backward_word(&mut self) {
 +        if self.delete_selection() {
 +            return;
@@ -1083,7 +1104,7 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
 @@ -2064,6 +2327,23 @@ impl TextArea {
                  );
              }
- 
+
 +            if let Some(selection_range) = self.selection_range() {
 +                let overlap_start = selection_range.start.max(line_range.start);
 +                let overlap_end = selection_range.end.min(line_range.end);
@@ -1104,10 +1125,10 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
              // Overlay render-only highlight ranges last so transient search highlighting remains
              // visible even when it intersects attachment placeholders or other styled elements.
              for (highlight_range, style) in highlights {
-@@ -2170,6 +2450,125 @@ mod tests {
+@@ -2170,6 +2450,132 @@ mod tests {
          t
      }
- 
+
 +    #[test]
 +    fn control_a_selects_all_and_typing_replaces_selection() {
 +        let mut t = ta_with("replace me");
@@ -1225,15 +1246,22 @@ index d821477fc0c6ab3bf38eb9da3885f2ea44302e4d..adf0ca2c2865af48369b08081cd93365
 +        ));
 +        assert_eq!(t.cursor(), t.text().len());
 +        assert_eq!(t.selection_range(), Some(4..t.text().len()));
++
++        let mut startup = ta_with("one\ntwo");
++        startup.set_cursor(/*pos*/ 5);
++        startup.input_startup_editor_key(KeyEvent::new(KeyCode::Home, KeyModifiers::CONTROL));
++        assert_eq!(startup.cursor(), 0);
++        startup.input_startup_editor_key(KeyEvent::new(KeyCode::End, KeyModifiers::CONTROL));
++        assert_eq!(startup.cursor(), startup.text().len());
 +    }
 +
      #[test]
      fn insert_and_replace_update_cursor_and_text() {
          // insert helpers
-@@ -3939,6 +4338,40 @@ mod tests {
+@@ -3939,6 +4345,40 @@ mod tests {
          );
      }
- 
+
 +    #[test]
 +    fn selection_renders_with_reverse_video_snapshot() {
 +        let mut t = ta_with("hello world");
@@ -1332,7 +1360,7 @@ index 2e3127891109c6de844d18a972156e80da020fc7..ff82a52eb6f42e0a92b708036a17bf3e
 @@ -1690,9 +1692,13 @@ impl ChatWidget {
          self.bottom_pane.composer_is_empty() && !self.bottom_pane.is_in_paste_burst()
      }
- 
+
 +    pub(crate) fn is_task_running(&self) -> bool {
 +        self.bottom_pane.is_task_running()
 +    }
@@ -1342,7 +1370,7 @@ index 2e3127891109c6de844d18a972156e80da020fc7..ff82a52eb6f42e0a92b708036a17bf3e
 -        self.bottom_pane.is_task_running()
 +        self.is_task_running()
      }
- 
+
      pub(crate) fn toggle_vim_mode_and_notify(&mut self) {
 diff --git a/codex-rs/tui/src/chatwidget/constructor.rs b/codex-rs/tui/src/chatwidget/constructor.rs
 index 5198cc13ccf015210107704cd09218ec01177c9b..54324abfd33ff1b2601005cce9017ec5edea77df 100644
@@ -1357,16 +1385,16 @@ index 5198cc13ccf015210107704cd09218ec01177c9b..54324abfd33ff1b2601005cce9017ec5
              current_rollout_path: None,
              current_cwd,
 diff --git a/codex-rs/tui/src/chatwidget/interaction.rs b/codex-rs/tui/src/chatwidget/interaction.rs
-index 06431c9060d8879eaa230900e81704d2255271fc..50633a3860fe86501299608473f0d1d15c0d2fd2 100644
+index 06431c9060d8879eaa230900e81704d2255271fc..f149fffde99248dd69c31d176a4a6ef4313b954c 100644
 --- a/codex-rs/tui/src/chatwidget/interaction.rs
 +++ b/codex-rs/tui/src/chatwidget/interaction.rs
 @@ -3,6 +3,35 @@
  use super::*;
- 
+
  impl ChatWidget {
-+    pub(crate) fn handle_mouse_event(&mut self, event: MouseEvent) {
++    pub(crate) fn handle_mouse_event(&mut self, event: MouseEvent) -> bool {
 +        let Some(area) = self.last_rendered_area.get() else {
-+            return;
++            return false;
 +        };
 +        let right_reserve = self.ambient_pet_wrap_reserved_cols();
 +        let bottom_height = {
@@ -1390,7 +1418,7 @@ index 06431c9060d8879eaa230900e81704d2255271fc..50633a3860fe86501299608473f0d1d1
 +            pane_outer.height.saturating_sub(1),
 +        );
 +        self.bottom_pane
-+            .handle_mouse_event(event, pane_inner, right_reserve);
++            .handle_mouse_event(event, pane_inner, right_reserve)
 +    }
 +
      pub(crate) fn keymap_contexts(&self) -> crate::keymap::KeymapContextSet {
@@ -1459,7 +1487,7 @@ index 06431c9060d8879eaa230900e81704d2255271fc..50633a3860fe86501299608473f0d1d1
 @@ -281,6 +351,52 @@ impl ChatWidget {
          self.copy_last_agent_markdown_with(crate::clipboard_copy::copy_to_clipboard);
      }
- 
+
 +    fn copy_selected_composer_text(&mut self) -> bool {
 +        self.copy_selected_composer_text_with(crate::clipboard_copy::copy_to_clipboard)
 +    }
@@ -1523,7 +1551,7 @@ index 37685eed6ac2ca90d2cdce3564b492c600718030..471dc0f8d6f6ead916423bfb9e5d8d9d
 +        self.last_rendered_area.set(Some(area));
 +    }
  }
- 
+
  struct TranscriptAreaRenderable<'a> {
 @@ -188,7 +193,7 @@ mod tests;
  impl Renderable for ChatWidget {
@@ -1532,7 +1560,7 @@ index 37685eed6ac2ca90d2cdce3564b492c600718030..471dc0f8d6f6ead916423bfb9e5d8d9d
 -        self.note_rendered_width(area.width);
 +        self.note_rendered_area(area);
      }
- 
+
      fn desired_height(&self, width: u16) -> u16 {
 diff --git a/codex-rs/tui/src/chatwidget/tests/composer_submission.rs b/codex-rs/tui/src/chatwidget/tests/composer_submission.rs
 index 8728b224b76d008b21ddc1e81da6c2f9dcb30c29..ae2aa20b48dc4a9fdafa4a9505eac6968574472e 100644
@@ -1570,7 +1598,7 @@ index 8728b224b76d008b21ddc1e81da6c2f9dcb30c29..ae2aa20b48dc4a9fdafa4a9505eac696
 +        panic!("clipboard backend should not run without a selection")
 +    }));
 +}
- 
+
  #[tokio::test]
  async fn parent_owned_thread_blocks_all_direct_input_entry_points() {
 diff --git a/codex-rs/tui/src/clipboard_paste.rs b/codex-rs/tui/src/clipboard_paste.rs
@@ -1598,7 +1626,7 @@ index 55ca6ca6590e4f9a73cdda7982623c3034383cf6..be7d0928a2d7983651d78212842cca21
 @@ -46,13 +50,16 @@ pub struct PastedImageInfo {
      pub encoded_format: EncodedImageFormat, // Always PNG for now.
  }
- 
+
 -/// Capture image from system clipboard, encode to PNG, and return bytes + info.
 +#[derive(Debug)]
 +pub enum ClipboardPayload {
@@ -1621,7 +1649,7 @@ index 55ca6ca6590e4f9a73cdda7982623c3034383cf6..be7d0928a2d7983651d78212842cca21
 @@ -108,6 +115,62 @@ pub fn paste_image_as_png() -> Result<(Vec<u8>, PastedImageInfo), PasteImageErro
      ))
  }
- 
+
 +fn persist_png(
 +    png: &[u8],
 +    info: PastedImageInfo,
@@ -1709,7 +1737,7 @@ index 9232e8d39df8079738644ba2e7746d2edd97c6c5..2158b31394d885f5feb15b3aeeef6e4b
 --- a/codex-rs/tui/src/cwd_prompt.rs
 +++ b/codex-rs/tui/src/cwd_prompt.rs
 @@ -130,10 +130,16 @@ pub(crate) async fn run_cwd_selection_prompt(
- 
+
      while !screen.is_done() {
          if let Some(event) = events.next().await {
 +            if tui.prepare_mouse_capture_for_non_composer_event(&event)?
@@ -1730,7 +1758,7 @@ index 077ef33637c64a6892cdea9e3dbe0212186ce9d8..62e759382bcd76276a6e209e62006bd3
 --- a/codex-rs/tui/src/external_agent_config_migration/mod.rs
 +++ b/codex-rs/tui/src/external_agent_config_migration/mod.rs
 @@ -105,10 +105,16 @@ pub(crate) async fn run_external_agent_config_migration_prompt(
- 
+
      while !screen.is_done() {
          if let Some(event) = events.next().await {
 +            if tui.prepare_mouse_capture_for_non_composer_event(&event)?
@@ -1751,7 +1779,7 @@ index d98aa40a48aecbf3e9845f2cd6cf60a57cef8b43..7741391e9ebc802b4ef6560392297066
 --- a/codex-rs/tui/src/external_agent_config_migration/source.rs
 +++ b/codex-rs/tui/src/external_agent_config_migration/source.rs
 @@ -62,10 +62,16 @@ pub(crate) async fn run_external_agent_config_source_prompt(
- 
+
      while !screen.is_done() {
          if let Some(event) = events.next().await {
 +            if tui.prepare_mouse_capture_for_non_composer_event(&event)?
@@ -1767,12 +1795,24 @@ index d98aa40a48aecbf3e9845f2cd6cf60a57cef8b43..7741391e9ebc802b4ef6560392297066
                  TuiEvent::Draw | TuiEvent::Resume | TuiEvent::Resize(_) => {
                      let _ = tui.draw(u16::MAX, |frame| {
                          frame.render_widget_ref(&screen, frame.area());
+diff --git a/codex-rs/tui/src/lib.rs b/codex-rs/tui/src/lib.rs
+index f8a973472943676622b9089debea906baf4b33c8..9e9f9ea91b4d5bf726551ac2fb4e1b2ddf9d44fa 100644
+--- a/codex-rs/tui/src/lib.rs
++++ b/codex-rs/tui/src/lib.rs
+@@ -206,6 +206,7 @@ mod updates;
+ #[cfg(any(not(debug_assertions), test))]
+ mod updates_cache;
+ mod version;
++mod vscode_bridge;
+ mod width;
+ #[cfg(any(target_os = "windows", test))]
+ mod windows_sandbox;
 diff --git a/codex-rs/tui/src/model_migration.rs b/codex-rs/tui/src/model_migration.rs
 index c82f9717ddabe21b775cf6aa5779cf9ada686b88..e16580fb65f9b12a01dc2497fa40235d34aef741 100644
 --- a/codex-rs/tui/src/model_migration.rs
 +++ b/codex-rs/tui/src/model_migration.rs
 @@ -151,10 +151,18 @@ pub(crate) async fn run_model_migration_prompt(
- 
+
      while !screen.is_done() {
          if let Some(event) = events.next().await {
 +            if alt
@@ -1846,7 +1886,7 @@ index 983443f3423323bdfbbb8a8fb0553d9813651b65..251a93c66c31f3943eca38fa357b4292
 +++ b/codex-rs/tui/src/startup_draft.rs
 @@ -280,6 +280,11 @@ impl StartupDraftPump {
      }
- 
+
      fn handle_event(&mut self, tui: &mut Tui, event: TuiEvent) -> io::Result<()> {
 +        if tui.prepare_mouse_capture_for_event(&event)?
 +            == crate::tui::MouseCaptureEventDisposition::Consume
@@ -1875,7 +1915,7 @@ index 983443f3423323bdfbbb8a8fb0553d9813651b65..251a93c66c31f3943eca38fa357b4292
 @@ -415,8 +422,9 @@ fn handle_startup_draft_key(bottom_pane: &mut BottomPane, key: KeyEvent) -> io::
          }
      }
- 
+
 -    if key_hint::has_ctrl_or_alt(key.modifiers) && !bottom_pane.is_safe_startup_editor_key(key)
 -        || key.code == KeyCode::Enter && !bottom_pane.is_safe_startup_editor_key(key)
 +    let is_safe_startup_editor_key = bottom_pane.is_safe_startup_editor_key(key);
@@ -1887,7 +1927,7 @@ index 983443f3423323bdfbbb8a8fb0553d9813651b65..251a93c66c31f3943eca38fa357b4292
 @@ -438,7 +446,11 @@ fn handle_startup_draft_key(bottom_pane: &mut BottomPane, key: KeyEvent) -> io::
          return Ok(());
      }
- 
+
 -    let _ = bottom_pane.handle_key_event(key);
 +    if is_safe_startup_editor_key {
 +        bottom_pane.handle_startup_editor_key(key);
@@ -1896,7 +1936,7 @@ index 983443f3423323bdfbbb8a8fb0553d9813651b65..251a93c66c31f3943eca38fa357b4292
 +    }
      Ok(())
  }
- 
+
 diff --git a/codex-rs/tui/src/startup_hooks_review.rs b/codex-rs/tui/src/startup_hooks_review.rs
 index 4a8f6433380eccd0230093f4048e8df7f923d6e1..f9372730e1c0b071632e1cefa1a44665768d506e 100644
 --- a/codex-rs/tui/src/startup_hooks_review.rs
@@ -1922,7 +1962,7 @@ index 4a8f6433380eccd0230093f4048e8df7f923d6e1..f9372730e1c0b071632e1cefa1a44665
          }
      }
 diff --git a/codex-rs/tui/src/tui.rs b/codex-rs/tui/src/tui.rs
-index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5cee280b4 100644
+index 639f88fa9b3d33cca63811eb416ab035aed42cb8..d51df83188a61d4b5b7c90640197d5ccbf7bdc6e 100644
 --- a/codex-rs/tui/src/tui.rs
 +++ b/codex-rs/tui/src/tui.rs
 @@ -19,10 +19,13 @@ use crossterm::SynchronizedUpdate;
@@ -1939,7 +1979,15 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
  use crossterm::terminal::EnterAlternateScreen;
  use crossterm::terminal::LeaveAlternateScreen;
  #[cfg(not(unix))]
-@@ -150,6 +153,14 @@ mod tests {
+@@ -104,6 +107,7 @@ fn should_emit_notification(condition: NotificationCondition, terminal_focused:
+
+ impl Drop for Tui {
+     fn drop(&mut self) {
++        crate::vscode_bridge::finish();
+         if let Err(err) = self.clear_ambient_pet_image() {
+             tracing::debug!(error = %err, "failed to clear ambient pet image on TUI drop");
+         }
+@@ -150,6 +154,14 @@ mod tests {
              ),
              0x398
          );
@@ -1954,10 +2002,10 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
          assert_eq!(
              super::windows_console::restored_input_mode(
                  /*mode*/ 0x198,
-@@ -159,6 +170,71 @@ mod tests {
+@@ -159,6 +171,71 @@ mod tests {
          );
      }
- 
+
 +    #[test]
 +    fn completed_turn_releases_capture_only_for_empty_composer_on_main_screen() {
 +        assert!(super::should_release_mouse_capture_after_turn(
@@ -2026,16 +2074,16 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
      #[test]
      fn unfocused_notification_condition_emits_when_unfocused() {
          assert!(should_emit_notification(
-@@ -226,7 +302,7 @@ mod tests {
+@@ -226,7 +303,7 @@ mod tests {
  pub fn set_modes() -> Result<()> {
      ensure_virtual_terminal_processing()?;
- 
+
 -    execute!(stdout(), EnableBracketedPaste)?;
 +    execute!(stdout(), EnableBracketedPaste, EnableMouseCapture)?;
- 
+
      enable_raw_mode()?;
      #[cfg(windows)]
-@@ -314,6 +390,9 @@ fn restore_common(
+@@ -314,6 +391,9 @@ fn restore_common(
      if let Err(err) = execute!(stdout(), DisableBracketedPaste) {
          first_error.get_or_insert(err);
      }
@@ -2045,7 +2093,7 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
      let _ = execute!(stdout(), DisableFocusChange);
      if matches!(raw_mode_restore, RawModeRestore::Disable)
          && let Err(err) = disable_raw_mode()
-@@ -561,6 +640,8 @@ pub enum TuiEvent {
+@@ -561,6 +641,8 @@ pub enum TuiEvent {
      Key(KeyEvent),
      /// A bracketed paste payload normalized by the app layer before it reaches the composer.
      Paste(String),
@@ -2054,10 +2102,10 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
      /// A terminal size notification and its reported dimensions.
      ///
      /// Resize is separate from `Draw` so the app can run feature-gated pre-render logic without
-@@ -575,6 +656,21 @@ pub enum TuiEvent {
+@@ -575,6 +657,21 @@ pub enum TuiEvent {
      Resume,
  }
- 
+
 +#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 +pub(crate) enum MouseCaptureEventDisposition {
 +    Route,
@@ -2076,7 +2124,7 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
  pub struct Tui {
      frame_requester: FrameRequester,
      draw_tx: broadcast::Sender<()>,
-@@ -598,6 +694,9 @@ pub struct Tui {
+@@ -598,6 +695,9 @@ pub struct Tui {
      is_zellij: bool,
      // When false, enter_alt_screen() becomes a no-op.
      alt_screen_enabled: bool,
@@ -2086,7 +2134,15 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
      // Keeps unmanaged process stderr writes out of the inline viewport.
      _stderr_guard: terminal_stderr::TerminalStderrGuard,
  }
-@@ -652,6 +751,7 @@ impl Tui {
+@@ -633,6 +733,7 @@ impl Tui {
+         let _ = crate::terminal_palette::default_colors();
+         let is_zellij = codex_terminal_detection::terminal_info().is_zellij();
+
++        crate::vscode_bridge::set_prompt_active(true);
+         Self {
+             frame_requester,
+             draw_tx,
+@@ -652,6 +753,7 @@ impl Tui {
              notification_condition: NotificationCondition::default(),
              is_zellij,
              alt_screen_enabled: true,
@@ -2094,10 +2150,10 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
              _stderr_guard: stderr_guard,
          }
      }
-@@ -682,6 +782,75 @@ impl Tui {
+@@ -682,6 +784,77 @@ impl Tui {
          self.alt_screen_active.load(Ordering::Relaxed)
      }
- 
+
 +    pub(crate) fn release_mouse_capture_for_scrollback(&mut self) -> Result<()> {
 +        if self.mouse_capture_active {
 +            #[cfg(all(windows, not(test)))]
@@ -2106,6 +2162,7 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
 +            execute!(self.terminal.backend_mut(), DisableMouseCapture)?;
 +            self.mouse_capture_active = false;
 +        }
++        crate::vscode_bridge::set_prompt_active(false);
 +        Ok(())
 +    }
 +
@@ -2117,6 +2174,7 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
 +            execute!(self.terminal.backend_mut(), EnableMouseCapture)?;
 +            self.mouse_capture_active = true;
 +        }
++        crate::vscode_bridge::set_prompt_active(true);
 +        Ok(())
 +    }
 +
@@ -2170,15 +2228,16 @@ index 639f88fa9b3d33cca63811eb416ab035aed42cb8..2500fc9c6cb0c24f1f31818a069d2ff5
      // Drop crossterm EventStream to avoid stdin conflicts with other processes.
      pub fn pause_events(&mut self) {
          self.event_broker.pause_events();
-@@ -696,6 +865,7 @@ impl Tui {
+@@ -696,6 +869,8 @@ impl Tui {
      /// Reclaim terminal modes and stderr after a panic hook ran inside a recovery boundary.
      pub(crate) fn recover_after_caught_panic(&mut self) -> Result<()> {
          set_modes()?;
 +        self.mouse_capture_active = true;
++        crate::vscode_bridge::set_prompt_active(true);
          self._stderr_guard.recover_after_caught_panic()?;
          self.terminal.invalidate_viewport();
          self.frame_requester().schedule_frame();
-@@ -748,6 +918,8 @@ impl Tui {
+@@ -748,6 +923,8 @@ impl Tui {
          }
          if let Err(err) = set_modes() {
              tracing::warn!("failed to re-enable terminal modes after external program: {err}");
@@ -2227,7 +2286,7 @@ index c08709cc771537c042d1915aa54c02a8e896b798..bc1c5a1b7823ede60aca8149a2f8c82f
 +        .then_some(size);
          Ok(size)
      }
- 
+
 diff --git a/codex-rs/tui/src/tui/windows_console.rs b/codex-rs/tui/src/tui/windows_console.rs
 index e328f4ef506dc320763410aac211309cb5852a47..a90b4c48e5f51be511a0071e45f10d3fdeb93a04 100644
 --- a/codex-rs/tui/src/tui/windows_console.rs
@@ -2235,12 +2294,12 @@ index e328f4ef506dc320763410aac211309cb5852a47..a90b4c48e5f51be511a0071e45f10d3f
 @@ -1,3 +1,4 @@
 +const ENABLE_MOUSE_INPUT: u32 = 0x0010;
  const ENABLE_VIRTUAL_TERMINAL_INPUT: u32 = 0x0200;
- 
+
  #[derive(Clone, Copy)]
 @@ -10,6 +11,14 @@ pub(super) fn input_record_mode(mode: u32) -> u32 {
      mode & !ENABLE_VIRTUAL_TERMINAL_INPUT
  }
- 
+
 +pub(super) fn mouse_capture_mode(mode: u32, enabled: bool) -> u32 {
 +    if enabled {
 +        mode | ENABLE_MOUSE_INPUT
@@ -2255,7 +2314,7 @@ index e328f4ef506dc320763410aac211309cb5852a47..a90b4c48e5f51be511a0071e45f10d3f
 @@ -41,6 +50,21 @@ fn current_input_mode() -> Option<(windows_sys::Win32::Foundation::HANDLE, u32)>
      Some((handle, mode))
  }
- 
+
 +#[cfg(all(windows, not(test)))]
 +pub(super) fn set_mouse_capture(enabled: bool) -> std::io::Result<()> {
 +    use windows_sys::Win32::System::Console::SetConsoleMode;
@@ -2279,7 +2338,7 @@ index ae8303124bf1499694a9f115c81ece74ed442c7d..f46619f59da3b4d2bd4a8d93d26f8662
 --- a/codex-rs/tui/src/update_prompt.rs
 +++ b/codex-rs/tui/src/update_prompt.rs
 @@ -56,10 +56,15 @@ pub(crate) async fn run_update_prompt_if_needed(
- 
+
      while !screen.is_done() {
          if let Some(event) = events.next().await {
 +            if tui.prepare_mouse_capture_for_non_composer_event(&event)?

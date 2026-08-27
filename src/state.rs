@@ -32,6 +32,8 @@ pub struct State {
     pub pre_install_user_path: Option<RegistryValueSnapshot>,
     pub shim_directory: Option<PathBuf>,
     pub path_entry_added: bool,
+    #[serde(default)]
+    pub vscode_extension_added: bool,
     pub defaults: DefaultSelections,
     pub native_targets: BTreeMap<CliKind, NativeTarget>,
     pub active_release: Option<ReleaseRecord>,
@@ -53,6 +55,7 @@ impl State {
             pre_install_user_path: None,
             shim_directory: None,
             path_entry_added: false,
+            vscode_extension_added: false,
             defaults: DefaultSelections::default(),
             native_targets: BTreeMap::new(),
             active_release: None,

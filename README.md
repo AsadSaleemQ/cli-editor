@@ -16,6 +16,8 @@ Verify the adjacent SHA-256 file, extract the ZIP, then run:
 .\cli-editor.exe install
 ```
 
+Installation also installs the bundled CLI Editor Terminal Bridge when VS Code is detected. Reload VS Code once so Ctrl+Home/End can be routed conditionally without changing your user keybindings.
+
 To download the lean source repository for development instead:
 
 ```powershell
@@ -37,7 +39,7 @@ Make enhanced Codex or managed native Claude the default with `cli-editor defaul
 
 Mouse editing requires terminal mouse capture in the interactive composer, including inline mode. A wheel/touchpad gesture temporarily releases capture so VS Code receives native scrollback; finishing an assistant turn with an empty composer in the normal chat view also releases capture so completed transcript text can be selected immediately. Keyboard or paste restores capture, and a non-empty draft keeps capture armed for composer placement and drag selection.
 
-Ctrl+Home and Ctrl+End move to the beginning and end of the editable prompt only. They do not move through the transcript or the terminal window. Their Ctrl+Shift variants select to those prompt boundaries.
+In VS Code, Ctrl+Home and Ctrl+End move to the beginning and end of the editable prompt only while the CLI Editor composer owns input. After a wheel handoff, completed-turn handoff, or click outside the composer, the same keys retain VS Code's native terminal-top and terminal-bottom behavior. Other terminals and native Claude are always left on their host defaults. Ctrl+Shift prompt-boundary selection remains available in terminals that forward those key sequences.
 
 Current release baseline: Windows 11 x64, VS Code 1.134.0, Codex CLI 0.148.0, and native Claude Code 2.1.240. Codex compatibility remains exact and fail-closed for explicit enhanced requests; an unknown VS Code host version produces a visible warning and continues because the host does not change the pinned Codex binary. Suspicious native target changes fail closed. The release workflow signs, hashes, SBOM-attests, provenance-attests, and independently rebuilds assets; it refuses publication unless all artifact hashes match bit-for-bit. v0.1 is not Authenticode-signed, so Windows SmartScreen may warn on first run.
 

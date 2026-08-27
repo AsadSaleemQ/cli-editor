@@ -6,7 +6,7 @@ Date: 2026-08-27
 
 - Platform: Windows terminals, including the integrated VS Code terminal.
 - Enhanced Codex: upstream `rust-v0.148.0`, commit `3ba0f711642a888aec92a611a3f3b2211157ff89`.
-- Codex patch: 35 files, 98,247 bytes, SHA-256 `969ff5ff021bceadd08a06e7c585eb455ee689b65385fc9a97ff49b156269c0f`.
+- Codex patch: 36 files, 100,706 bytes, SHA-256 `b2c158a5c0cb65b3e6840402a69d8af9dc212223db26218a9962560dd851aa89`.
 - Claude Code: native pass-through only; Claude is not patched or redistributed.
 - Release toolchain: Rust 1.95.0, Windows MSVC.
 
@@ -19,10 +19,12 @@ The public CI workflow runs these gates on every push and pull request:
 - publication-boundary and credential scanning;
 - Actionlint 1.7.12 for both GitHub Actions workflows;
 - dispatcher formatting and warnings-denied Clippy;
-- all 66 dispatcher tests, release build, and isolated release-finalizer fixture;
+- all 67 dispatcher tests plus the VS Code bridge routing and deterministic VSIX checks, release build, and isolated release-finalizer fixture;
 - clean pinned Codex aggregate: 3,557 passed, 26 known Windows snapshot failures, 10 ignored;
 - patched Codex aggregate: 3,571 passed, the same 26 failure names, 10 ignored;
 - pinned Rusty V8 150.4.0 download integrity and MSVC `codex-code-mode-host` check.
+
+Local pre-publication validation also installed the deterministic VSIX through VS Code's CLI in isolated user-data and extensions directories; VS Code recognized it as `asadsaleemq.cli-editor-vscode-0.1.0`.
 
 The patched suite adds 14 passing tests and no new failure or ignored test. The committed baseline gate checks the complete pass/fail/ignored totals and exact known failure-name set.
 

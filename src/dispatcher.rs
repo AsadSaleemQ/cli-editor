@@ -418,6 +418,7 @@ mod tests {
             pre_install_user_path: None,
             shim_directory: None,
             path_entry_added: false,
+            vscode_extension_added: false,
             defaults: DefaultSelections::default(),
             native_targets: BTreeMap::new(),
             active_release: Some(ReleaseRecord {

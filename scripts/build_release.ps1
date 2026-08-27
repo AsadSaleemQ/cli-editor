@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $upstreamCommit = '3ba0f711642a888aec92a611a3f3b2211157ff89'
 $patch = Join-Path $root 'patches\codex\rust-v0.148.0\0001-desktop-composer.patch'
-$expectedPatchSha256 = '969ff5ff021bceadd08a06e7c585eb455ee689b65385fc9a97ff49b156269c0f'
+$expectedPatchSha256 = 'b2c158a5c0cb65b3e6840402a69d8af9dc212223db26218a9962560dd851aa89'
 $work = Join-Path $root ".work\release-$Version"
 $upstream = Join-Path $work 'codex'
 $artifacts = Join-Path $root '.artifacts'
@@ -96,6 +96,8 @@ $env:CARGO_ENCODED_RUSTFLAGS = (@(
 if ($LASTEXITCODE -ne 0) { throw 'patched Codex build failed' }
 
 [IO.Directory]::CreateDirectory($bundle) | Out-Null
+$vscodeExtensionName = 'cli-editor-vscode.vsix'
+& (Join-Path $root 'scripts\build_vscode_extension.ps1') -OutputPath (Join-Path $bundle $vscodeExtensionName)
 $files = [ordered]@{
     'cli-editor.exe' = Join-Path $root 'target\release\cli-editor.exe'
     'codex-enhanced.exe' = Join-Path $upstream 'codex-rs\target\release\codex.exe'
@@ -170,7 +172,7 @@ foreach ($name in @('codex-enhanced.exe', 'codex-code-mode-host.exe')) {
     }
 }
 
-$artifactRecords = foreach ($name in $files.Keys) {
+$artifactRecords = foreach ($name in @($files.Keys) + $vscodeExtensionName) {
     $file = Get-Item -LiteralPath (Join-Path $bundle $name)
     [ordered]@{
         name = $name
@@ -238,7 +240,7 @@ $sbomPath = Join-Path $artifacts "cli-editor-$Version.sbom.json"
 $sourceArchive = Join-Path $artifacts "cli-editor-$Version-source.zip"
 & git -C $root archive --format=zip --output=$sourceArchive HEAD
 if ($LASTEXITCODE -ne 0) { throw 'source archive generation failed' }
-$expectedBundleFiles = @($files.Keys) + $distributionDocs + @($licenseReports.Output) + @('compatibility-manifest.json')
+$expectedBundleFiles = @($files.Keys) + $vscodeExtensionName + $distributionDocs + @($licenseReports.Output) + @('compatibility-manifest.json')
 $actualBundleFiles = @(Get-ChildItem -LiteralPath $bundle -File | ForEach-Object Name | Sort-Object)
 $missingBundleFiles = @($expectedBundleFiles | Where-Object { $_ -notin $actualBundleFiles })
 if ($missingBundleFiles.Count -ne 0) { throw "Unsigned release bundle is incomplete: $($missingBundleFiles -join ', ')" }

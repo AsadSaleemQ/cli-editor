@@ -10,6 +10,8 @@ Do not open a public issue for a suspected vulnerability. Use GitHub's private v
 
 ## Trust model
 
+The release manifest signs the companion VSIX as an artifact. Its terminal commands fail safe to native VS Code scrolling unless a live, same-console CLI Editor record explicitly marks the prompt active. The bridge state contains process IDs and a boolean only; it contains no prompt or transcript text.
+
 CLI Editor protects against release-asset substitution, network/CDN tampering, cached-manifest corruption, sequence rollback, unsafe PATH discovery, shim recursion, and incompatible enhanced activation. It does not claim to protect against arbitrary code already executing as the same Windows user.
 
 Native target discovery accepts canonical `.exe` paths or resolves official npm shims through exact package names and fixed native-binary locations. CLI Editor never executes a discovered `.cmd`, `.bat`, or `.ps1` wrapper; the first matching unknown package or arbitrary script is rejected so discovery cannot silently change PATH semantics.

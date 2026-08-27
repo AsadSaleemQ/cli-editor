@@ -24,8 +24,9 @@
 | `Ctrl+Z` | Undo the last composer edit. |
 | `Ctrl+Shift+Z` | Redo the last undone composer edit. `Ctrl+Y` remains the upstream yank binding. |
 
-Selections inside the editable prompt belong to the Codex composer rather than VS Code's rendered
-terminal buffer. This is why typing and deletion can replace a mouse-dragged prompt selection.
+Navigation and selections inside the editable prompt belong to the Codex composer rather than VS Code's rendered
+terminal buffer. `Ctrl+Home` and `Ctrl+End` therefore use prompt boundaries, not transcript or
+terminal-window boundaries. Typing and deletion can replace a mouse-dragged prompt selection.
 Terminal mouse capture is enabled while composer interaction is needed and restored on exit.
 
 When a wheel or two-finger touchpad gesture begins in the normal chat view, Codex releases mouse
@@ -33,11 +34,12 @@ capture so VS Code can scroll its native terminal history. The first wheel event
 handoff; continue the same gesture to scroll. The next keyboard or paste event restores mouse
 capture for composer click/drag editing.
 
-When an assistant turn finishes and the composer is empty, Codex also releases mouse capture. This
-lets VS Code select and copy completed transcript text immediately, without requiring a wheel event
-first. If the composer contains a draft, capture stays enabled so click placement and drag selection
-continue to edit that draft. Press `Esc` before clicking if you only want to restore capture without
-editing the prompt.
+When an assistant turn finishes in the normal chat view and the composer is empty, Codex also
+releases mouse capture. This lets VS Code select and copy completed transcript text immediately,
+without requiring a wheel event first. If the composer contains a draft or an alternate-screen
+overlay is active, capture stays enabled so click placement and drag selection keep working. With
+an empty composer, press `Right Arrow` before clicking if you want to restore capture without
+changing the prompt.
 
 ## Clipboard rule
 

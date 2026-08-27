@@ -3,14 +3,14 @@
     "commit":  "3ba0f711642a888aec92a611a3f3b2211157ff89",
     "tree":  "5d80f78b1760fc1b3a0d702a50cfef479b68426c",
     "patch":  "0001-desktop-composer.patch",
-    "patch_sha256":  "6a87f803bd7f6175c47419ecb0f254c0f62063239ce6007a01c670b259cff08c",
-    "patch_bytes":  94244,
+    "patch_sha256":  "969ff5ff021bceadd08a06e7c585eb455ee689b65385fc9a97ff49b156269c0f",
+    "patch_bytes":  98247,
     "patch_files":  35,
     "purpose":  "Desktop-style composer selection, clipboard, mouse, and touchpad behavior",
     "validation":  {
                        "reverse_apply_check":  true,
                        "forward_clean_tree_check":  true,
-                       "tui_tests":  "patched 3570 passed versus clean 3557; both 26 baseline Windows failures and 10 ignored",
+                       "tui_tests":  "patched 3571 passed versus clean 3557; both 26 baseline Windows failures and 10 ignored",
                        "release_build":  "passed offline with Rust 1.95.0 gnullvm; public MSVC workflow pending"
                    }
 }

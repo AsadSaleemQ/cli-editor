@@ -2,7 +2,7 @@
 
 ## What ships
 
-The Git repository stays small: Rust dispatcher source, a 92 KB patch against a pinned Codex commit, schemas, documentation, and automation. Upstream source trees and Cargo build directories remain ignored. Compiled Windows artifacts belong in GitHub Releases. The upstream Cargo release output includes large debug/line-table sections (1,274,960,896 bytes in the local proof build); release packaging strips symbols, reducing the validated Codex executable to 226,393,088 bytes before ZIP compression.
+The Git repository stays small: Rust dispatcher source, a compact patch against a pinned Codex commit, schemas, documentation, and automation. Upstream source trees and Cargo build directories remain ignored. Compiled Windows artifacts belong in GitHub Releases. The upstream Cargo release output includes large debug/line-table sections (1,274,960,896 bytes in the local proof build); release packaging strips symbols, reducing the validated Codex executable to 226,393,088 bytes before ZIP compression.
 
 A release bundle contains:
 
@@ -10,7 +10,7 @@ A release bundle contains:
 - `codex-enhanced.exe`: the pinned Codex build with the desktop composer patch.
 - `codex-code-mode-host.exe`: the matching upstream code-mode helper.
 - `compatibility-manifest.json` and `.sig`: Ed25519-signed artifact and compatibility metadata.
-- `THIRD_PARTY_LICENSES_CLI_EDITOR_ai.html` and `THIRD_PARTY_LICENSES_CODEX_ai.html`: generated dependency license texts for the two Rust binary sets.
+- `THIRD_PARTY_LICENSES_CLI_EDITOR.html` and `THIRD_PARTY_LICENSES_CODEX.html`: generated dependency license texts for the two Rust binary sets.
 
 ## Commands
 
@@ -69,17 +69,17 @@ git -C upstream-codex apply ..\cli-editor\patches\codex\rust-v0.148.0\0001-deskt
 cargo build --manifest-path upstream-codex\codex-rs\Cargo.toml --release -j 1 -p codex-cli -p codex-code-mode-host
 ```
 
-Release dispatches are serialized, and preparation requires the requested manifest sequence to exceed every existing release or draft manifest sequence. Release signing then requires the offline private seed corresponding to `compatibility/public-key.hex`. The seed is never committed. It is unavailable to compilation: two unsigned builds must first match completely, after which a separate protected job revalidates the artifacts and uses the seed only for manifest signing/finalization. `src/bin/sign_release_ai.rs` signs exact manifest bytes and emits the public key for a required equality check. Release bundles are signed, hashed, SBOM-attested, and provenance-attested. The release job performs an independent clean rebuild with normalized paths and deterministic ZIP timestamps, then refuses publication unless every artifact hash matches bit-for-bit and an isolated Windows runner completes install, bare default and explicit routes for both CLIs, a 30-sample native-versus-wrapper p95 latency gate for both CLIs, restored native routes, uninstall, residue, and exact raw-PATH checks. v0.1 does not include Authenticode signing or established SmartScreen reputation.
+Release dispatches are serialized, and preparation requires the requested manifest sequence to exceed every existing release or draft manifest sequence. Release signing then requires the offline private seed corresponding to `compatibility/public-key.hex`. The seed is never committed. It is unavailable to compilation: two unsigned builds must first match completely, after which a separate protected job revalidates the artifacts and uses the seed only for manifest signing/finalization. `src/bin/sign_release.rs` signs exact manifest bytes and emits the public key for a required equality check. Release bundles are signed, hashed, SBOM-attested, and provenance-attested. The release job performs an independent clean rebuild with normalized paths and deterministic ZIP timestamps, then refuses publication unless every artifact hash matches bit-for-bit and an isolated Windows runner completes install, bare default and explicit routes for both CLIs, a 30-sample native-versus-wrapper p95 latency gate for both CLIs, restored native routes, uninstall, residue, and exact raw-PATH checks. v0.1 does not include Authenticode signing or established SmartScreen reputation.
 
 ## Documentation
 
-- [Verification and current release gates](VERIFICATION_ai.md)
-- [Desktop composer behavior](DESKTOP_COMPOSER_BEHAVIOR_ai.md)
-- [Updates and rollback](UPDATE_AND_ROLLBACK_ai.md)
-- [Security policy](SECURITY_ai.md)
-- [Contributing](CONTRIBUTING_ai.md)
-- [Release notes](RELEASE_NOTES_ai.md)
-- [Third-party notices](THIRD_PARTY_NOTICES_ai.md)
+- [Verification and current release gates](docs/VERIFICATION.md)
+- [Desktop composer behavior](docs/DESKTOP_COMPOSER_BEHAVIOR.md)
+- [Updates and rollback](docs/UPDATE_AND_ROLLBACK.md)
+- [Security policy](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
+- [Release notes](RELEASE_NOTES.md)
+- [Third-party notices](THIRD_PARTY_NOTICES.md)
 
 ## License and trademarks
 

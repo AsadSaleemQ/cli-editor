@@ -19,7 +19,7 @@ use crate::registry::{
 use crate::state::{
     ManifestCacheRecord, ReleaseRecord, State, StateStore, ensure_not_reparse, replace_file,
 };
-use crate::version_ai::normalized_version;
+use crate::version::normalized_version;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 

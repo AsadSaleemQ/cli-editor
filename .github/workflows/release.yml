@@ -123,11 +123,11 @@ jobs:
           git clone --filter=blob:none https://github.com/openai/codex.git $upstream
           git -C $upstream checkout 3ba0f711642a888aec92a611a3f3b2211157ff89
           git -C $upstream apply --check $patch
-          .\scripts\refresh_codex_lock_ai.ps1 -UpstreamRoot $upstream
-          .\scripts\check_codex_tui_baseline_ai.ps1 -UpstreamRoot $upstream
+          .\scripts\refresh_codex_lock.ps1 -UpstreamRoot $upstream
+          .\scripts\check_codex_tui_baseline.ps1 -UpstreamRoot $upstream
           git -C $upstream apply $patch
-          .\scripts\refresh_codex_lock_ai.ps1 -UpstreamRoot $upstream
-          $v8 = .\scripts\prepare_rusty_v8_ai.ps1 `
+          .\scripts\refresh_codex_lock.ps1 -UpstreamRoot $upstream
+          $v8 = .\scripts\prepare_rusty_v8.ps1 `
             -UpstreamRoot $upstream `
             -DestinationRoot (Join-Path $env:RUNNER_TEMP 'rusty-v8')
           $env:RUSTY_V8_ARCHIVE = $v8.ArchivePath
@@ -135,7 +135,7 @@ jobs:
           cargo +1.95.0-x86_64-pc-windows-msvc check --locked `
             --manifest-path (Join-Path $upstream 'codex-rs\Cargo.toml') `
             -p codex-code-mode-host
-          .\scripts\check_codex_tui_baseline_ai.ps1 -UpstreamRoot $upstream -ExpectedPassed 3570
+          .\scripts\check_codex_tui_baseline.ps1 -UpstreamRoot $upstream -ExpectedPassed 3571
 
   build-primary:
     needs: [prepare, preflight]
@@ -167,7 +167,7 @@ jobs:
           CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
           CLI_EDITOR_ISSUED_UNIX: ${{ needs.prepare.outputs.issued_unix }}
         run: |
-          .\scripts\build_release_ai.ps1 `
+          .\scripts\build_release.ps1 `
             -Version $env:CLI_EDITOR_RELEASE_VERSION `
             -CodexVersion $env:CLI_EDITOR_CODEX_VERSION `
             -Repository $env:CLI_EDITOR_REPOSITORY `
@@ -211,7 +211,7 @@ jobs:
           CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
           CLI_EDITOR_ISSUED_UNIX: ${{ needs.prepare.outputs.issued_unix }}
         run: |
-          .\scripts\build_release_ai.ps1 `
+          .\scripts\build_release.ps1 `
             -Version $env:CLI_EDITOR_RELEASE_VERSION `
             -CodexVersion $env:CLI_EDITOR_CODEX_VERSION `
             -Repository $env:CLI_EDITOR_REPOSITORY `
@@ -386,7 +386,7 @@ jobs:
           CLI_EDITOR_MANIFEST_SEQUENCE: ${{ needs.prepare.outputs.manifest_sequence }}
           CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
         run: |
-          .\scripts\finalize_release_ai.ps1 `
+          .\scripts\finalize_release.ps1 `
             -Version $env:CLI_EDITOR_RELEASE_VERSION `
             -IssuedUnix ([uint64]$env:CLI_EDITOR_ISSUED_UNIX) `
             -ManifestSequence ([uint64]$env:CLI_EDITOR_MANIFEST_SEQUENCE) `
@@ -438,5 +438,5 @@ jobs:
             --repo $env:CLI_EDITOR_REPOSITORY `
             --target $env:GITHUB_SHA `
             --title "CLI Editor v$env:CLI_EDITOR_RELEASE_VERSION" `
-            --notes-file RELEASE_NOTES_ai.md `
+            --notes-file RELEASE_NOTES.md `
             --draft

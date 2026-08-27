@@ -41,14 +41,17 @@ try {
         }
     }
     $internalArtifactPatterns = @(
-        '^CASE_STUDY_ai\.md$',
-        '^CLAUDE_.*REVIEW.*_ai\.md$',
-        '^CODEX_.*RECONCILIATION.*_ai\.md$',
-        '^PATCH_REVIEW_ai\.md$',
-        '^(?:PLAN|REVIEW_HANDOFF|SESSION_HANDOFF)_ai\.md$',
+        '^CASE_STUDY\.md$',
+        '^CLAUDE_.*REVIEW.*\.md$',
+        '^CODEX_.*RECONCILIATION.*\.md$',
+        '^PATCH_REVIEW\.md$',
+        '^(?:PLAN|REVIEW_HANDOFF|SESSION_HANDOFF)\.md$',
         '^docs/reviews/'
     )
     foreach ($file in $files) {
+        if ($file -match '_[aA][iI](?:\.|$)') {
+            $findings.Add([pscustomobject]@{ Kind = 'authorship-marker'; File = $file; Line = 0 })
+        }
         if (@($internalArtifactPatterns | Where-Object { $file -match $_ }).Count -ne 0) {
             $findings.Add([pscustomobject]@{ Kind = 'internal-process-artifact'; File = $file; Line = 0 })
         }

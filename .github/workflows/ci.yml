@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Enforce public repository boundary
         shell: pwsh
-        run: ./scripts/check_publication_candidate_ai.ps1
+        run: ./scripts/check_publication_candidate.ps1
       - name: Validate GitHub Actions workflows
         shell: bash
         run: |
@@ -50,7 +50,7 @@ jobs:
         run: cargo +1.95.0-x86_64-pc-windows-msvc build --locked --release --bins
       - name: Exercise isolated release finalizer
         shell: pwsh
-        run: .\scripts\check_release_finalizer_ai.ps1 -SignerPath target\release\sign_release_ai.exe
+        run: .\scripts\check_release_finalizer.ps1 -SignerPath target\release\sign_release.exe
 
   patch:
     runs-on: windows-latest
@@ -68,7 +68,7 @@ jobs:
         run: |
           $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
           $patch = "$env:GITHUB_WORKSPACE\patches\codex\rust-v0.148.0\0001-desktop-composer.patch"
-          $expected = '6a87f803bd7f6175c47419ecb0f254c0f62063239ce6007a01c670b259cff08c'
+          $expected = '969ff5ff021bceadd08a06e7c585eb455ee689b65385fc9a97ff49b156269c0f'
           if ((Get-FileHash -Algorithm SHA256 -LiteralPath $patch).Hash.ToLowerInvariant() -ne $expected) { throw 'patch hash mismatch' }
           git clone --filter=blob:none https://github.com/openai/codex.git $upstream
           git -C $upstream checkout 3ba0f711642a888aec92a611a3f3b2211157ff89
@@ -80,12 +80,12 @@ jobs:
         shell: pwsh
         run: |
           $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
-          .\scripts\refresh_codex_lock_ai.ps1 -UpstreamRoot $upstream
+          .\scripts\refresh_codex_lock.ps1 -UpstreamRoot $upstream
       - name: Verify clean unpatched Windows baseline
         shell: pwsh
         run: |
           $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
-          .\scripts\check_codex_tui_baseline_ai.ps1 -UpstreamRoot $upstream
+          .\scripts\check_codex_tui_baseline.ps1 -UpstreamRoot $upstream
       - name: Apply and validate patch
         shell: pwsh
         run: |
@@ -97,7 +97,7 @@ jobs:
         shell: pwsh
         run: |
           $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
-          $v8 = .\scripts\prepare_rusty_v8_ai.ps1 `
+          $v8 = .\scripts\prepare_rusty_v8.ps1 `
             -UpstreamRoot $upstream `
             -DestinationRoot (Join-Path $env:RUNNER_TEMP 'rusty-v8')
           $env:RUSTY_V8_ARCHIVE = $v8.ArchivePath
@@ -108,4 +108,4 @@ jobs:
         shell: pwsh
         run: |
           $upstream = Join-Path $env:RUNNER_TEMP 'codex-upstream'
-          .\scripts\check_codex_tui_baseline_ai.ps1 -UpstreamRoot $upstream -ExpectedPassed 3570
+          .\scripts\check_codex_tui_baseline.ps1 -UpstreamRoot $upstream -ExpectedPassed 3571

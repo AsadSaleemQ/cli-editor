@@ -7,7 +7,7 @@ use crate::discovery::{sha256_file, validate_recorded_target_identity};
 use crate::error::{CliEditorError, Result};
 use crate::process::run_native;
 use crate::state::{NativeTarget, State, StateStore};
-use crate::version_ai::normalized_version;
+use crate::version::normalized_version;
 
 pub(crate) fn invocation_kind(executable: &Path) -> Option<CliKind> {
     let stem = executable.file_stem()?.to_str()?;

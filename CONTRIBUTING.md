@@ -22,7 +22,7 @@ cargo clippy --locked --all-targets --offline -- -D warnings
 cargo test --locked -j 1 --offline
 ```
 
-Never commit `.work`, `target`, release binaries, private signing keys, user state, PATH snapshots, logs, or credentials. AI-authored text and source files follow the workspace `_ai` filename convention.
+Never commit `.work`, `target`, release binaries, private signing keys, user state, PATH snapshots, logs, or credentials. Use conventional purpose-based filenames without authorship markers.
 
 ## Pull requests
 

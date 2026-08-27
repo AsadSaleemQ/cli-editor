@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $upstreamCommit = '3ba0f711642a888aec92a611a3f3b2211157ff89'
 $patch = Join-Path $root 'patches\codex\rust-v0.148.0\0001-desktop-composer.patch'
-$expectedPatchSha256 = '6a87f803bd7f6175c47419ecb0f254c0f62063239ce6007a01c670b259cff08c'
+$expectedPatchSha256 = '969ff5ff021bceadd08a06e7c585eb455ee689b65385fc9a97ff49b156269c0f'
 $work = Join-Path $root ".work\release-$Version"
 $upstream = Join-Path $work 'codex'
 $artifacts = Join-Path $root '.artifacts'
@@ -62,8 +62,8 @@ if ($LASTEXITCODE -ne 0) { throw 'patch preflight failed' }
 if ($LASTEXITCODE -ne 0) { throw 'patch application failed' }
 & git -C $upstream diff --check
 if ($LASTEXITCODE -ne 0) { throw 'patched tree has whitespace errors' }
-& (Join-Path $root 'scripts\refresh_codex_lock_ai.ps1') -UpstreamRoot $upstream
-$rustyV8 = & (Join-Path $root 'scripts\prepare_rusty_v8_ai.ps1') `
+& (Join-Path $root 'scripts\refresh_codex_lock.ps1') -UpstreamRoot $upstream
+$rustyV8 = & (Join-Path $root 'scripts\prepare_rusty_v8.ps1') `
     -UpstreamRoot $upstream `
     -DestinationRoot (Join-Path $work 'rusty-v8')
 
@@ -103,9 +103,9 @@ $files = [ordered]@{
 }
 $releaseTools = Join-Path $artifacts 'release-tools'
 [IO.Directory]::CreateDirectory($releaseTools) | Out-Null
-$signer = Join-Path $root 'target\release\sign_release_ai.exe'
+$signer = Join-Path $root 'target\release\sign_release.exe'
 if (-not (Test-Path -LiteralPath $signer -PathType Leaf)) { throw "Missing release signer: $signer" }
-[IO.File]::Copy($signer, (Join-Path $releaseTools 'sign_release_ai.exe'), $false)
+[IO.File]::Copy($signer, (Join-Path $releaseTools 'sign_release.exe'), $false)
 foreach ($entry in $files.GetEnumerator()) {
     if (-not (Test-Path -LiteralPath $entry.Value -PathType Leaf)) { throw "Missing release artifact: $($entry.Value)" }
     [IO.File]::Copy($entry.Value, (Join-Path $bundle $entry.Key), $false)
@@ -113,17 +113,17 @@ foreach ($entry in $files.GetEnumerator()) {
 & cargo +1.95.0-x86_64-pc-windows-msvc fetch --locked --manifest-path (Join-Path $root 'Cargo.toml')
 if ($LASTEXITCODE -ne 0) { throw 'dispatcher dependency fetch failed before frozen license generation' }
 $licenseReports = @(
-    @{ Manifest = (Join-Path $root 'Cargo.toml'); Output = 'THIRD_PARTY_LICENSES_CLI_EDITOR_ai.html' },
-    @{ Manifest = (Join-Path $upstream 'codex-rs\Cargo.toml'); Output = 'THIRD_PARTY_LICENSES_CODEX_ai.html' }
+    @{ Manifest = (Join-Path $root 'Cargo.toml'); Output = 'THIRD_PARTY_LICENSES_CLI_EDITOR.html' },
+    @{ Manifest = (Join-Path $upstream 'codex-rs\Cargo.toml'); Output = 'THIRD_PARTY_LICENSES_CODEX.html' }
 )
 foreach ($report in $licenseReports) {
     $output = Join-Path $bundle $report.Output
-    & cargo about generate --frozen --config (Join-Path $root 'about_ai.toml') --manifest-path $report.Manifest -o $output (Join-Path $root 'about_ai.hbs')
+    & cargo about generate --frozen --config (Join-Path $root 'about.toml') --manifest-path $report.Manifest -o $output (Join-Path $root 'about.hbs')
     if ($LASTEXITCODE -ne 0 -or -not (Test-Path -LiteralPath $output -PathType Leaf)) {
         throw "third-party license generation failed for $($report.Manifest)"
     }
 }
-$distributionDocs = @('LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES_ai.md')
+$distributionDocs = @('LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md')
 foreach ($name in $distributionDocs) {
     $source = Join-Path $root $name
     if (-not (Test-Path -LiteralPath $source -PathType Leaf)) { throw "Missing distribution notice: $source" }

@@ -6,9 +6,7 @@ use zeroize::{Zeroize, Zeroizing};
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let arguments: Vec<std::ffi::OsString> = std::env::args_os().collect();
     if arguments.len() != 5 {
-        return Err(
-            "usage: sign_release_ai PRIVATE_KEY MANIFEST SIGNATURE_OUT PUBLIC_KEY_OUT".into(),
-        );
+        return Err("usage: sign_release PRIVATE_KEY MANIFEST SIGNATURE_OUT PUBLIC_KEY_OUT".into());
     }
     let private_key_path = Path::new(&arguments[1]);
     let manifest_path = Path::new(&arguments[2]);

@@ -4,7 +4,11 @@
 
 | Input | Required custom behavior |
 |---|---|
-| `Ctrl+A` | Select the complete editable prompt. It must not merely move the cursor. |
+| Ctrl+A | Select the complete editable prompt. It must not merely move the cursor. |
+| Home / End | Move to the start / end of the current prompt line. |
+| Shift+Home / Shift+End | Select to the start / end of the current prompt line. |
+| Ctrl+Home / Ctrl+End | Move to the start / end of the complete prompt. |
+| Ctrl+Shift+Home / Ctrl+Shift+End | Select to the start / end of the complete prompt. |
 | `Shift+Left` / `Shift+Right` | Extend or shrink the prompt selection by a grapheme. |
 | `Shift+Up` / `Shift+Down` | Extend the selection across visual or logical lines. |
 | `Ctrl+Shift+Left` / `Ctrl+Shift+Right` | Extend the selection by word boundaries. |

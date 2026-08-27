@@ -8,7 +8,7 @@ mod installer;
 mod process;
 mod registry;
 mod state;
-mod version_ai;
+mod version;
 use clap::Parser;
 use cli::Cli;
 use cli::Command;

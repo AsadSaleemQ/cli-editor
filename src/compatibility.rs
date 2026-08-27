@@ -184,8 +184,8 @@ fn verify_with_key(
 mod tests {
     #[test]
     fn production_key_verifies_the_committed_release_fixture() {
-        let bytes = include_bytes!("../compatibility/production-manifest-fixture_ai.json");
-        let signature = include_str!("../compatibility/production-manifest-fixture_ai.sig");
+        let bytes = include_bytes!("../compatibility/production-manifest-fixture.json");
+        let signature = include_str!("../compatibility/production-manifest-fixture.sig");
         let verified = super::verify_manifest_with_key_hex(
             bytes,
             signature,

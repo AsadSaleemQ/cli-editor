@@ -114,6 +114,8 @@ foreach ($entry in $files.GetEnumerator()) {
 }
 & cargo +1.95.0-x86_64-pc-windows-msvc fetch --locked --manifest-path (Join-Path $root 'Cargo.toml')
 if ($LASTEXITCODE -ne 0) { throw 'dispatcher dependency fetch failed before frozen license generation' }
+& cargo +1.95.0-x86_64-pc-windows-msvc fetch --locked --manifest-path (Join-Path $upstream 'codex-rs\Cargo.toml')
+if ($LASTEXITCODE -ne 0) { throw 'upstream dependency fetch failed before frozen license generation' }
 $licenseReports = @(
     @{ Manifest = (Join-Path $root 'Cargo.toml'); Output = 'THIRD_PARTY_LICENSES_CLI_EDITOR.html' },
     @{ Manifest = (Join-Path $upstream 'codex-rs\Cargo.toml'); Output = 'THIRD_PARTY_LICENSES_CODEX.html' }

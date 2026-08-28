@@ -50,7 +50,7 @@ $text = $text.Replace($needle, $replacement)
 [IO.File]::WriteAllText($vendoredSource, $text, [Text.UTF8Encoding]::new($false))
 
 $manifestText = [IO.File]::ReadAllText($manifest)
-$patchHeader = '(?m)^\[patch\.crates-io\]$'
+$patchHeader = '(?m)^\[patch\.crates-io\](?=\r?$)'
 if ([regex]::Matches($manifestText, $patchHeader).Count -ne 1) { throw 'Expected one upstream [patch.crates-io] section.' }
 if ($manifestText -match '(?m)^i18n-embed-fl\s*=') { throw 'Upstream manifest already patches i18n-embed-fl.' }
 $vendorTomlPath = $vendorRoot.Replace('\', '/')

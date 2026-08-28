@@ -1,3 +1,4 @@
+use std::ffi::OsStr;
 use std::path::Path;
 use std::path::PathBuf;
 use std::process::Command;
@@ -88,7 +89,11 @@ fn run_code(code: &CodeCli, args: &[&str]) -> Result<String> {
 
 fn discover_code_executable() -> Option<CodeCli> {
     let path = std::env::var_os("PATH")?;
-    for directory in std::env::split_paths(&path) {
+    discover_code_executable_in(&path)
+}
+
+fn discover_code_executable_in(path: &OsStr) -> Option<CodeCli> {
+    for directory in std::env::split_paths(path) {
         for launcher in ["code.cmd", "code"] {
             let candidate = directory.join(launcher);
             if !candidate.is_file() {
@@ -121,7 +126,7 @@ fn discover_code_executable() -> Option<CodeCli> {
             if let Some(script) = scripts.pop() {
                 return Some(CodeCli {
                     executable: executable.canonicalize().ok()?,
-                    script: script.canonicalize().ok()?,
+                    script,
                 });
             }
         }
@@ -131,10 +136,41 @@ fn discover_code_executable() -> Option<CodeCli> {
 #[cfg(test)]
 mod tests {
     use super::EXTENSION_ID;
+    use super::discover_code_executable_in;
 
     #[test]
     fn extension_identity_is_stable_and_lowercase() {
         assert_eq!(EXTENSION_ID, EXTENSION_ID.to_ascii_lowercase());
         assert_eq!(EXTENSION_ID.split('.').count(), 2);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn code_cli_script_path_avoids_windows_verbatim_prefix() {
+        let root = std::env::temp_dir().join(format!(
+            "cli-editor-vscode-discovery-{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        let bin = root.join("bin");
+        let script = root
+            .join("1.134.0")
+            .join("resources")
+            .join("app")
+            .join("out")
+            .join("cli.js");
+        std::fs::create_dir_all(&bin).unwrap();
+        std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+        std::fs::write(root.join("Code.exe"), []).unwrap();
+        std::fs::write(bin.join("code.cmd"), []).unwrap();
+        std::fs::write(&script, []).unwrap();
+
+        let path = std::env::join_paths([&bin]).unwrap();
+        let discovered = discover_code_executable_in(&path).unwrap();
+        let discovered_script = discovered.script;
+        std::fs::remove_dir_all(&root).unwrap();
+
+        assert_eq!(discovered_script, script);
+        assert!(!discovered_script.to_string_lossy().starts_with(r"\\?\"));
     }
 }

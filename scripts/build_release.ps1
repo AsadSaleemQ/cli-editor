@@ -63,6 +63,7 @@ if ($LASTEXITCODE -ne 0) { throw 'patch application failed' }
 & git -C $upstream diff --check
 if ($LASTEXITCODE -ne 0) { throw 'patched tree has whitespace errors' }
 & (Join-Path $root 'scripts\refresh_codex_lock.ps1') -UpstreamRoot $upstream
+& (Join-Path $root 'scripts\prepare_i18n_embed_fl.ps1') -UpstreamRoot $upstream -WorkRoot $work
 $rustyV8 = & (Join-Path $root 'scripts\prepare_rusty_v8.ps1') `
     -UpstreamRoot $upstream `
     -DestinationRoot (Join-Path $work 'rusty-v8')

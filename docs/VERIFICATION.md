@@ -55,10 +55,10 @@ An earlier live VS Code terminal test confirmed touchpad/wheel scrolling, clipbo
 
 Before a non-draft release:
 
-1. complete that live mouse-capture retest;
-2. provision or rotate the protected Ed25519 signing seed;
-3. run the signed draft workflow, including the first actual V8 link and reproducible-build parity;
-4. inspect the signed ZIP, hashes, SBOM, provenance, attestations, and generated license reports; and
+1. complete the live mouse-capture and Ctrl+Home/End retest;
+2. run the hosted unsigned release workflow, including the first actual V8 link and bit-for-bit rebuild parity;
+3. download that exact candidate, sign it locally without uploading the seed, and publish a draft;
+4. inspect the signed ZIP, hashes, SBOM, unsigned-build provenance, and generated license reports; and
 5. complete downloaded-artifact install/default/restore/update/rollback/uninstall and repeated-sequence acceptance on an isolated Windows account or clean machine.
 
 No signed draft, reproducible-release parity, or downloaded-artifact lifecycle success is claimed until those gates execute.

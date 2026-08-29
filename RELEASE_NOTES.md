@@ -1,3 +1,10 @@
+# Unreleased
+
+## VS Code companion
+
+- Consolidated Terminal Smart Paste into `asadsaleemq.cli-editor-vscode` so Ctrl+V text and image routing, Ctrl+Home, and Ctrl+End ship from one extension and one repository.
+- Preserved the former `terminalSmartPaste.paste` command as a compatibility alias while making `cliEditor.smartPaste` the canonical command.
+
 # CLI Editor v0.1.2
 
 Windows x64 patch release of CLI Editor.

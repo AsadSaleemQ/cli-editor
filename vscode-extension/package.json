@@ -1,27 +1,35 @@
 {
   "name": "cli-editor-vscode",
   "displayName": "CLI Editor Terminal Bridge",
-  "description": "Routes prompt-boundary keys to terminal applications without scrolling VS Code history.",
-  "version": "0.1.2",
+  "description": "Routes prompt navigation and smart clipboard paste to terminal applications without VS Code intercepting the keys.",
+  "version": "0.2.0",
   "publisher": "asadsaleemq",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AsadSaleemQ/cli-editor.git"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": ["Other"],
   "activationEvents": [
     "onCommand:cliEditor.promptHome",
-    "onCommand:cliEditor.promptEnd"
+    "onCommand:cliEditor.promptEnd",
+    "onCommand:cliEditor.smartPaste",
+    "onCommand:terminalSmartPaste.paste"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
       { "command": "cliEditor.promptHome", "title": "CLI Editor: Prompt Start" },
-      { "command": "cliEditor.promptEnd", "title": "CLI Editor: Prompt End" }
+      { "command": "cliEditor.promptEnd", "title": "CLI Editor: Prompt End" },
+      { "command": "cliEditor.smartPaste", "title": "CLI Editor: Smart Paste Text or Image" }
     ],
     "keybindings": [
       { "command": "cliEditor.promptHome", "key": "ctrl+home", "when": "terminalFocus" },
-      { "command": "cliEditor.promptEnd", "key": "ctrl+end", "when": "terminalFocus" }
+      { "command": "cliEditor.promptEnd", "key": "ctrl+end", "when": "terminalFocus" },
+      { "command": "cliEditor.smartPaste", "key": "ctrl+v", "when": "terminalFocus" }
     ]
   }
 }

@@ -37,7 +37,7 @@ $manifest = @"
   </Assets>
 </PackageManifest>
 "@
-$readme = "# CLI Editor Terminal Bridge`n`nBundled companion for [CLI Editor](https://github.com/AsadSaleemQ/cli-editor). It routes Ctrl+Home and Ctrl+End to the active terminal application instead of VS Code terminal scrollback.`n"
+$readme = "# CLI Editor Terminal Bridge`n`nBundled companion for [CLI Editor](https://github.com/AsadSaleemQ/cli-editor). It routes Ctrl+Home and Ctrl+End to the active terminal application instead of VS Code terminal scrollback, and routes Ctrl+V as text paste or terminal-native image paste based on the clipboard contents.`n"
 $contentTypes = @"
 <?xml version="1.0" encoding="utf-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">

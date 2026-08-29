@@ -9,7 +9,7 @@ A release bundle contains:
 - `cli-editor.exe`: installer, dispatcher, compatibility guard, updater, doctor, and uninstaller.
 - `codex-enhanced.exe`: the pinned Codex build with the desktop composer patch.
 - `codex-code-mode-host.exe`: the matching upstream code-mode helper.
-- `cli-editor-vscode.vsix`: a minimal companion that routes Ctrl+Home and Ctrl+End to the active terminal application instead of VS Code scrollback commands.
+- `cli-editor-vscode.vsix`: a minimal companion that routes Ctrl+Home and Ctrl+End to the active terminal application instead of VS Code scrollback commands and routes Ctrl+V as text or terminal-native image paste.
 - `compatibility-manifest.json` and `.sig`: Ed25519-signed artifact and compatibility metadata.
 - `THIRD_PARTY_LICENSES_CLI_EDITOR.html` and `THIRD_PARTY_LICENSES_CODEX.html`: generated dependency license texts for the two Rust binary sets.
 
@@ -37,7 +37,7 @@ Before changing PATH, CLI Editor records the exact raw registry value, including
 
 ## Codex and Claude behavior
 
-The VS Code companion binds Ctrl+Home and Ctrl+End at the terminal host and sends the standard xterm modified-key sequences to the active terminal. This prevents VS Code from consuming those chords as scroll-to-top and scroll-to-bottom before Codex can interpret them. The companion does not read prompt or transcript content. User-level keybindings have final precedence, and named profiles keep independent extension and keybinding registries.
+The VS Code companion binds Ctrl+Home and Ctrl+End at the terminal host and sends the standard xterm modified-key sequences to the active terminal. This prevents VS Code from consuming those chords as scroll-to-top and scroll-to-bottom before Codex can interpret them. Its Ctrl+V handler delegates non-empty text to VS Code's terminal paste command and sends terminal-native Ctrl+V when clipboard text is empty so image paste can reach the CLI. The companion does not read prompt or transcript content, store clipboard content, or transmit it. User-level keybindings have final precedence, and named profiles keep independent extension and keybinding registries.
 
 Enhanced Codex is selected only by an explicit `codex cli-editor` invocation or an enabled Codex default. A signed cached manifest must support the exact native Codex version. Invalid signatures, rollback sequences, unsupported Codex versions, or expired manifests cannot authorize an enhanced binary. An unlisted VS Code host version produces a visible warning and continues because host drift does not change the pinned Codex binary. A defaulted route otherwise degrades to verified native Codex; an explicit enhanced request fails visibly.
 

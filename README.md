@@ -44,7 +44,7 @@ Download the latest Windows x64 ZIP and adjacent `.sha256` file from [GitHub Rel
 .\cli-editor.exe install
 ```
 
-CLI Editor installs its per-user launcher and, when VS Code is available, the bundled terminal companion. Reload VS Code after installation. Named VS Code profiles must have the companion extension and its Ctrl+Home/End bindings in the profile used by the terminal.
+CLI Editor installs its per-user launcher and, when VS Code is available, the bundled terminal companion. Reload VS Code after installation. Named VS Code profiles must have the companion extension and its Ctrl+Home/End and Ctrl+V bindings in the profile used by the terminal.
 
 Open a new terminal so it inherits the updated user PATH, then try:
 

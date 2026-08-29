@@ -1,11 +1,11 @@
-# CLI Editor v0.1.1
+# CLI Editor v0.1.2
 
 Windows x64 patch release of CLI Editor.
 
 ## Corrected
 
-- Ctrl+Home and Ctrl+End now stay routed to a live enhanced Codex composer after wheel or completed-turn scrollback handoff.
-- VS Code bridge tests cover both boundary keys, inactive-capture routing, and native terminal fallback after the enhanced process exits.
+- Ctrl+Home and Ctrl+End now always reach the active terminal application instead of falling back to VS Code's scroll-to-top or scroll-to-bottom commands when process matching drifts.
+- VS Code bridge tests cover both exact terminal sequences and the no-active-terminal case.
 
 ## Included
 

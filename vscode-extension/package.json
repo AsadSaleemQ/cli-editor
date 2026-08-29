@@ -1,8 +1,8 @@
 {
   "name": "cli-editor-vscode",
   "displayName": "CLI Editor Terminal Bridge",
-  "description": "Routes prompt-boundary keys while enhanced Codex is active in the terminal.",
-  "version": "0.1.1",
+  "description": "Routes prompt-boundary keys to terminal applications without scrolling VS Code history.",
+  "version": "0.1.2",
   "publisher": "asadsaleemq",
   "license": "Apache-2.0",
   "engines": {
@@ -16,8 +16,8 @@
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      { "command": "cliEditor.promptHome", "title": "CLI Editor: Prompt Start or Terminal Top" },
-      { "command": "cliEditor.promptEnd", "title": "CLI Editor: Prompt End or Terminal Bottom" }
+      { "command": "cliEditor.promptHome", "title": "CLI Editor: Prompt Start" },
+      { "command": "cliEditor.promptEnd", "title": "CLI Editor: Prompt End" }
     ],
     "keybindings": [
       { "command": "cliEditor.promptHome", "key": "ctrl+home", "when": "terminalFocus" },

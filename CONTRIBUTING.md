@@ -24,6 +24,10 @@ cargo test --locked -j 1 --offline
 
 Never commit `.work`, `target`, release binaries, private signing keys, user state, PATH snapshots, logs, or credentials. Use conventional purpose-based filenames without authorship markers.
 
+## Documentation
+
+Keep the README focused on the complete product, its supported modes, and the shortest successful path for a user. Put durable behavioral contracts in the topical guides and version-specific changes in `RELEASE_NOTES.md`. CI run IDs, local candidate paths, temporary failures, and maintainer back-and-forth belong in GitHub Actions or local handoff notes, not permanent product documentation.
+
 ## Pull requests
 
 Explain the user-visible behavior, security boundary, compatibility impact, rollback behavior, and exact tests run. Changes to the patch, manifest schema, trust key, process forwarding, discovery, installation, update, or uninstall logic require both Codex and Claude Code review before release.

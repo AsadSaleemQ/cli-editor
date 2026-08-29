@@ -2,14 +2,14 @@
 
 ## What ships
 
-The Git repository stays small: Rust dispatcher source, a compact patch against a pinned Codex commit, schemas, documentation, and automation. Upstream source trees and Cargo build directories remain ignored. Compiled Windows artifacts belong in GitHub Releases. The upstream Cargo release output includes large debug/line-table sections (1,274,960,896 bytes in the local proof build); release packaging strips symbols, reducing the validated Codex executable to 226,393,088 bytes before ZIP compression.
+The Git repository contains the Rust dispatcher, a compact patch against a pinned Codex commit, compatibility schemas, the VS Code companion source, documentation, and release automation. Upstream source trees, build directories, local validation output, and compiled release binaries remain outside version control. Published Windows artifacts belong in GitHub Releases.
 
 A release bundle contains:
 
 - `cli-editor.exe`: installer, dispatcher, compatibility guard, updater, doctor, and uninstaller.
 - `codex-enhanced.exe`: the pinned Codex build with the desktop composer patch.
 - `codex-code-mode-host.exe`: the matching upstream code-mode helper.
-- `cli-editor-vscode.vsix`: a minimal companion that routes prompt-boundary keys while a live enhanced Codex process belongs to the active terminal and otherwise preserves native terminal scrolling.
+- `cli-editor-vscode.vsix`: a minimal companion that routes Ctrl+Home and Ctrl+End to the active terminal application instead of VS Code scrollback commands.
 - `compatibility-manifest.json` and `.sig`: Ed25519-signed artifact and compatibility metadata.
 - `THIRD_PARTY_LICENSES_CLI_EDITOR.html` and `THIRD_PARTY_LICENSES_CODEX.html`: generated dependency license texts for the two Rust binary sets.
 
@@ -31,11 +31,13 @@ codex cli-editor [-- CODEX_ARGS...]
 claude cli-editor [-- CLAUDE_ARGS...]
 ```
 
-Installation adds one owned shim directory to the beginning of the current user's PATH and broadcasts the Windows environment change. When VS Code is safely discovered beside its official CLI launcher, installation adds the bundled terminal-bridge VSIX without rewriting `settings.json` or `keybindings.json`; state records ownership so uninstall removes only an extension CLI Editor added. Strict flags apply only to Claude or `all`; `default all` preserves the existing Claude strict setting unless `--strict` or `--no-strict` is explicit. A default request fails without changing state when its native CLI was not discovered; after installing that CLI, `cli-editor repair --adopt-native codex|claude` adds its route. It records the exact raw registry value, including type and expansion text, before mutation. If PATH is unchanged, uninstall restores that snapshot byte-for-byte. If PATH changed later, uninstall removes only CLI Editor's owned entry and preserves the later edits. If the shim entry already existed before installation, CLI Editor records that it did not add or own the setting, leaves it unchanged on uninstall, and prints a notice even though the owned directory is removed. It removes only the owned `%LOCALAPPDATA%\CLIEditor` tree. Cleanup never traverses a reparse-point directory. Self-uninstall removes its running shim from the command path before completing state and PATH cleanup; if Windows keeps that renamed image locked and a non-elevated process cannot queue restart deletion, the exact inert residue is reported for removal after the command exits.
+Installation adds one owned shim directory to the beginning of the current user's PATH and broadcasts the Windows environment change. When VS Code is safely discovered beside its official CLI launcher, installation adds the bundled terminal companion and records ownership so uninstall removes only an extension CLI Editor added. VS Code profiles maintain separate extension and keybinding registries, so the companion and its bindings must exist in the profile that owns the terminal workspace. Strict flags apply only to Claude or `all`; `default all` preserves the existing Claude strict setting unless `--strict` or `--no-strict` is explicit. A default request fails without changing state when its native CLI was not discovered; after installing that CLI, `cli-editor repair --adopt-native codex|claude` adds its route.
+
+Before changing PATH, CLI Editor records the exact raw registry value, including its type and expansion text. If PATH is unchanged, uninstall restores that snapshot byte-for-byte. If PATH changed later, uninstall removes only CLI Editor's owned entry and preserves the later edits. A pre-existing shim entry is never claimed or removed. Cleanup is confined to the owned `%LOCALAPPDATA%\CLIEditor` tree and never traverses a reparse-point directory. Self-uninstall removes its running shim from command resolution before completing cleanup and reports any inert Windows-locked residue that must be removed after exit.
 
 ## Codex and Claude behavior
 
-The VS Code bridge binds Ctrl+Home/End at the terminal host, reads a per-process record under `%LOCALAPPDATA%\CLIEditor\vscode-bridge`, and matches it to the active terminal's console process list. Prompt-active records forward xterm Ctrl+Home/End sequences; prompt-inactive, missing, stale, malformed, unrelated, and native-Claude sessions call VS Code's normal scroll-to-top/bottom commands. Codex creates the record only under `TERM_PROGRAM=vscode`, updates it on capture transitions, and removes it on normal TUI teardown.
+The VS Code companion binds Ctrl+Home and Ctrl+End at the terminal host and sends the standard xterm modified-key sequences to the active terminal. This prevents VS Code from consuming those chords as scroll-to-top and scroll-to-bottom before Codex can interpret them. The companion does not read prompt or transcript content. User-level keybindings have final precedence, and named profiles keep independent extension and keybinding registries.
 
 Enhanced Codex is selected only by an explicit `codex cli-editor` invocation or an enabled Codex default. A signed cached manifest must support the exact native Codex version. Invalid signatures, rollback sequences, unsupported Codex versions, or expired manifests cannot authorize an enhanced binary. An unlisted VS Code host version produces a visible warning and continues because host drift does not change the pinned Codex binary. A defaulted route otherwise degrades to verified native Codex; an explicit enhanced request fails visibly.
 

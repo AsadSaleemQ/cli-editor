@@ -10,7 +10,7 @@ Do not open a public issue for a suspected vulnerability. Use GitHub's private v
 
 ## Trust model
 
-The release manifest signs the companion VSIX as an artifact. Its terminal commands fail safe to native VS Code scrolling unless a live, same-console CLI Editor record explicitly marks the prompt active. The bridge state contains process IDs and a boolean only; it contains no prompt or transcript text.
+The release manifest signs the companion VSIX as an artifact. Its two terminal commands send fixed Ctrl+Home and Ctrl+End escape sequences to the active terminal; they do not read, store, or transmit prompt or transcript content. VS Code user or profile keybindings determine whether those commands receive the corresponding chords.
 
 CLI Editor protects against release-asset substitution, network/CDN tampering, cached-manifest corruption, sequence rollback, unsafe PATH discovery, shim recursion, and incompatible enhanced activation. It does not claim to protect against arbitrary code already executing as the same Windows user.
 

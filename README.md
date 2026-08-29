@@ -1,50 +1,104 @@
 # CLI Editor
 
-CLI Editor is a Windows launcher and maintained Codex patch that adds desktop-style terminal editing: touchpad and wheel scrolling, mouse placement and drag selection, clipboard shortcuts, image paste, undo/redo, and editable-prompt Ctrl+Home/End navigation. Claude Code is never patched or redistributed; its route is a validated native pass-through.
+CLI Editor brings desktop-style prompt editing to Codex CLI on Windows while preserving the native command-line tools, process behavior, and an explicit compatibility boundary. It combines an enhanced Codex build, a small Windows launcher, and a VS Code terminal companion into one reversible installation.
 
-## Install and use
+Claude Code is supported as a validated native pass-through. It is never patched or redistributed, so Claude retains its own interface rather than the enhanced Codex composer.
 
-Download the latest published Windows release from a terminal with GitHub CLI:
+## Capabilities
 
-```powershell
-gh release download --repo AsadSaleemQ/cli-editor --pattern 'cli-editor-*-windows-x64.zip' --pattern 'cli-editor-*-windows-x64.zip.sha256'
-```
+### Desktop prompt editing for Codex
 
-Verify the adjacent SHA-256 file, extract the ZIP, then run:
+- Place the cursor with the mouse and drag across multiple lines to select text.
+- Double-click words and triple-click lines.
+- Use familiar selection shortcuts: Shift+Arrow, Shift+Home/End, Ctrl+Shift+Arrow, and Ctrl+Shift+Home/End.
+- Use Ctrl+A, Ctrl+C, Ctrl+X, and Ctrl+V with normal desktop semantics while preserving Codex interrupt behavior when nothing is selected.
+- Paste either clipboard text or images, with Ctrl+Alt+V available to force image paste.
+- Undo and redo composer edits with Ctrl+Z and Ctrl+Shift+Z.
+- Move within a line with Home/End and across the complete draft with Ctrl+Home/End.
+- Scroll terminal history with the mouse wheel or touchpad, then resume editing from the keyboard or composer.
+- Select completed transcript text without sacrificing mouse editing of a non-empty draft.
+
+### Launcher and CLI integration
+
+- Run enhanced Codex explicitly with `codex cli-editor` or make it the default.
+- Run Claude through the unchanged native executable with signed compatibility checks.
+- Forward arguments, console-control events, exit codes, and process cleanup without shell-wrapper ambiguity.
+- Inspect installation health with human-readable or JSON diagnostics.
+- Adopt legitimate in-place native CLI updates while rejecting relocation or identity drift.
+
+### Safe lifecycle management
+
+- Verify enhanced artifacts and compatibility metadata with an embedded Ed25519 public key.
+- Fail visibly for unsupported explicit enhanced requests and fall back to verified native Codex for default routes.
+- Stage updates transactionally, retain signed prior releases, and support verified rollback.
+- Restore native defaults at any time.
+- Uninstall only owned files and PATH entries while preserving unrelated edits and pre-existing extensions.
+
+See the [desktop composer guide](docs/DESKTOP_COMPOSER_BEHAVIOR.md) for the complete input contract.
+
+## Install
+
+Download the latest Windows x64 ZIP and adjacent `.sha256` file from [GitHub Releases](https://github.com/AsadSaleemQ/cli-editor/releases), verify the checksum, extract the archive, and run:
 
 ```powershell
 .\cli-editor.exe install
 ```
 
-Installation also installs the bundled CLI Editor Terminal Bridge when VS Code is detected. Reload VS Code once so Ctrl+Home/End can be routed conditionally without changing your user keybindings.
+CLI Editor installs its per-user launcher and, when VS Code is available, the bundled terminal companion. Reload VS Code after installation. Named VS Code profiles must have the companion extension and its Ctrl+Home/End bindings in the profile used by the terminal.
 
-To download the lean source repository for development instead:
-
-```powershell
-git clone https://github.com/AsadSaleemQ/cli-editor.git
-cd cli-editor
-```
-
-The source repository intentionally does not contain compiled release executables, so cloning it is
-not an installation method.
-
-Open a new terminal so it inherits the updated user PATH, then run:
+Open a new terminal so it inherits the updated user PATH, then try:
 
 ```powershell
 codex cli-editor
 claude cli-editor
+cli-editor status
+cli-editor doctor
 ```
 
-Make enhanced Codex or managed native Claude the default with `cli-editor default codex`, `cli-editor default claude`, or `cli-editor default all`. Restore native defaults with `cli-editor restore all`. Remove CLI Editor with `cli-editor uninstall`; it restores the exact pre-install user PATH when it owned the change, preserves later edits, and leaves any pre-existing unowned shim entry in place with a notice. If Windows keeps the running shim image locked, the command still completes settings removal, removes that shim from command resolution, and reports any inert residue that can be deleted after exit.
+The source repository intentionally excludes compiled release executables. Cloning the repository is for development, not installation.
 
-Mouse editing requires terminal mouse capture in the interactive composer, including inline mode. A wheel/touchpad gesture temporarily releases capture so VS Code receives native scrollback; finishing an assistant turn with an empty composer in the normal chat view also releases capture so completed transcript text can be selected immediately. Keyboard or paste restores capture, and a non-empty draft keeps capture armed for composer placement and drag selection.
+## Choose how each CLI launches
 
-In VS Code, Ctrl+Home and Ctrl+End move to the beginning and end of the editable prompt for the lifetime of the active enhanced Codex session, including after wheel or completed-turn scrollback handoff. Other terminals and native Claude retain their host defaults. Ctrl+Shift prompt-boundary selection remains available in terminals that forward those key sequences.
+| Goal | Command |
+|---|---|
+| One enhanced Codex session | `codex cli-editor` |
+| One validated native Claude session | `claude cli-editor` |
+| Enhanced Codex by default | `cli-editor default codex` |
+| Managed native Claude by default | `cli-editor default claude` |
+| Configure both defaults | `cli-editor default all` |
+| Restore native Codex and Claude | `cli-editor restore all` |
+| Pass `cli-editor` literally to a native CLI | `codex -- cli-editor` or `claude -- cli-editor` |
 
-Current release baseline: Windows 11 x64, VS Code 1.134.0 and 1.135.0, Codex CLI 0.148.0, and native Claude Code 2.1.240 and 2.1.251. Codex compatibility remains exact and fail-closed for explicit enhanced requests; an unknown VS Code host version produces a visible warning and continues because the host does not change the pinned Codex binary. Suspicious native target changes fail closed. The hosted release workflow hashes, provenance-attests, and independently rebuilds unsigned assets, refusing a candidate unless all artifact hashes match bit-for-bit. Signing happens only on the maintainer workstation after a successful hosted run; the private seed is never uploaded. v0.1 is not Authenticode-signed, so Windows SmartScreen may warn on first run.
+Claude strictness controls whether an unlisted native Claude version is rejected or launched with a warning; it does not enable an enhanced Claude composer.
 
-Use `codex -- cli-editor` or `claude -- cli-editor` when `cli-editor` must be passed literally as the native CLI's first argument. See [TECHNICAL_GUIDE.md](TECHNICAL_GUIDE.md) for architecture, trust, build, update, compatibility, and testing details.
+## Manage the installation
+
+```text
+cli-editor status
+cli-editor doctor [--json]
+cli-editor update --bundle DIRECTORY
+cli-editor rollback [--release RELEASE]
+cli-editor repair --adopt-native codex|claude
+cli-editor uninstall
+```
+
+Updates are explicit and bundle-based; startup never blocks on a network download. See the [update and rollback contract](docs/UPDATE_AND_ROLLBACK.md) for recovery and ownership behavior.
+
+## Compatibility and trust
+
+The current validated baseline is Windows 11 x64, VS Code 1.134 and 1.135, Codex CLI 0.148.0, and native Claude Code 2.1.240 and 2.1.251. Enhanced Codex compatibility is exact and signed. Host-version drift may warn without changing the pinned enhanced binary; suspicious native-target or artifact changes fail closed.
+
+Release assets are reproducibly built, hash-checked, provenance-attested, and finalized with a signing key that is never uploaded to GitHub. Windows may still show SmartScreen on an unsigned executable without established reputation.
+
+## Documentation
+
+- [Desktop composer behavior](docs/DESKTOP_COMPOSER_BEHAVIOR.md) — complete mouse, keyboard, clipboard, selection, and scrolling contract.
+- [Technical guide](TECHNICAL_GUIDE.md) — architecture, process fidelity, compatibility, building, and release design.
+- [Update and rollback](docs/UPDATE_AND_ROLLBACK.md) — update verification, retention, rollback, uninstall, and failure recovery.
+- [Verification](docs/VERIFICATION.md) — supported baseline, automated gates, and acceptance checklist.
+- [Security policy](SECURITY.md) — trust boundaries and vulnerability reporting.
+- [Release notes](RELEASE_NOTES.md) — version-specific changes only.
 
 ## Project boundary
 
-CLI Editor is an independent modified build and is not affiliated with or endorsed by OpenAI, Anthropic, or Microsoft. Codex source is used under Apache-2.0; Claude Code is neither modified nor redistributed.
+CLI Editor is an independent modified build and is not affiliated with or endorsed by OpenAI, Anthropic, or Microsoft. Codex source is used under Apache-2.0. Claude Code is neither modified nor redistributed.

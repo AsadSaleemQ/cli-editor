@@ -1,6 +1,6 @@
 # Update and rollback contract
 
-CLI Editor owns `%LOCALAPPDATA%\CLIEditor` and one per-user PATH entry pointing to its `shims` directory. It never edits Codex, Claude Code, VS Code user settings, npm packages, or shell profile files in place. When VS Code is discovered, install adds the signed bundled `asadsaleemq.cli-editor-vscode` companion extension and records whether CLI Editor added it.
+CLI Editor owns `%LOCALAPPDATA%\CLIEditor` and one per-user PATH entry pointing to its `shims` directory. It never edits Codex, Claude Code, npm packages, or shell profile files in place. When VS Code is discovered, install adds the signed bundled `asadsaleemq.cli-editor-vscode` companion extension and records whether CLI Editor added it. VS Code profiles have independent extension and keybinding registries; profile-specific bindings remain user-owned configuration.
 
 ## Native CLI updates
 

@@ -2,7 +2,7 @@
   "name": "cli-editor",
   "displayName": "CLI Editor",
   "description": "Turn Codex CLI terminals into chat-style editors with smart clipboard paste and familiar shortcuts.",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "publisher": "asadsaleemq",
   "license": "Apache-2.0",
   "repository": {
@@ -29,7 +29,7 @@
     "commands": [
       { "command": "cliEditor.promptHome", "title": "CLI Editor: Prompt Start" },
       { "command": "cliEditor.promptEnd", "title": "CLI Editor: Prompt End" },
-      { "command": "cliEditor.smartPaste", "title": "CLI Editor: Smart Paste Text or Image" }
+      { "command": "cliEditor.smartPaste", "title": "CLI Editor: Smart Paste" }
     ],
     "keybindings": [
       { "command": "cliEditor.promptHome", "key": "ctrl+home", "when": "terminalFocus" },

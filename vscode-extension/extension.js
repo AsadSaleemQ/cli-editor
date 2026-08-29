@@ -19,8 +19,7 @@ async function smartPaste(vscode) {
   );
 }
 
-function activate(context) {
-  const vscode = require('vscode');
+function activate(context, vscode = require('vscode')) {
   context.subscriptions.push(
     vscode.commands.registerCommand('cliEditor.promptHome', () =>
       route(vscode, '\u001b[1;5H')),

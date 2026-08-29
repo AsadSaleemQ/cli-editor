@@ -22,7 +22,7 @@ One repository ships the complete product: an enhanced Codex build, the `cli-edi
 | `Ctrl+Shift+Home` / `Ctrl+Shift+End` | Select to the start / end of the complete prompt. | Enhanced Codex |
 | `Ctrl+C` | Copy selected prompt text; without a selection, preserve interrupt/cancel. | Enhanced Codex |
 | `Ctrl+X` | Cut the selected prompt text. | Enhanced Codex |
-| `Ctrl+V` | Paste clipboard text, or pass terminal-native image paste when no text is present. | VS Code terminal, including Codex and Claude Code |
+| `Ctrl+V` | Use VS Code text paste when clipboard text is present; otherwise forward `Ctrl+V` so the CLI can handle image/native paste. | VS Code terminal, including Codex and Claude Code |
 | `Ctrl+Alt+V` | Force clipboard-image paste. | Enhanced Codex |
 | `Ctrl+Z` | Undo the last prompt edit. | Enhanced Codex |
 | `Ctrl+Shift+Z` | Redo the last undone prompt edit. | Enhanced Codex |
@@ -108,7 +108,16 @@ Updates are explicit and bundle-based; startup never blocks on a network downloa
 
 ## Compatibility and trust
 
-The current validated baseline is Windows 11 x64, VS Code 1.134 and 1.135, Codex CLI 0.148.0, and native Claude Code 2.1.240 and 2.1.251. Enhanced Codex compatibility is exact and signed. Host-version drift may warn without changing the pinned enhanced binary; suspicious native-target or artifact changes fail closed.
+| Layer | Supported or validated baseline |
+|---|---|
+| Operating system | Windows 11 x64. macOS and Linux are not currently supported. |
+| Editor | Microsoft VS Code 1.134 and 1.135 validated; the extension manifest accepts VS Code `^1.90.0`. VS Code forks are untested. |
+| Enhanced Codex | Codex CLI 0.148.0 (`rust-v0.148.0`) with an exact signed compatibility match. |
+| Claude Code | Versions 2.1.240 and 2.1.251 validated as unchanged native pass-through; Claude's composer is not patched. |
+| Terminal | VS Code integrated terminal on the validated Windows baseline. |
+| Release toolchain | Rust 1.95.0 with Windows MSVC. |
+
+Host-version drift may warn without changing the pinned enhanced binary; suspicious native-target or artifact changes fail closed.
 
 Release assets are reproducibly built, hash-checked, provenance-attested, and finalized with a signing key that is never uploaded to GitHub. Windows may still show SmartScreen on an unsigned executable without established reputation.
 

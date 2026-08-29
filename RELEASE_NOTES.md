@@ -5,6 +5,7 @@
 - Standardized the product, extension, VSIX, package, folder, and GitHub identity on **CLI Editor** (`asadsaleemq.cli-editor`, `cli-editor.vsix`, and `AsadSaleemQ/cli-editor`).
 - Consolidated Terminal Smart Paste into CLI Editor so chat-style prompt editing, smart text/image paste, and familiar shortcuts ship from one extension and one repository.
 - Preserved the former `terminalSmartPaste.paste` command as a compatibility alias while making `cliEditor.smartPaste` the canonical command.
+- Added manifest/runtime contract coverage and explicit extension activation, background behavior, and compatibility documentation.
 
 # CLI Editor v0.1.2
 

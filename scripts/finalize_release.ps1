@@ -72,7 +72,7 @@ $artifactPaths = @{
     'cli-editor.exe' = Join-Path $bundle 'cli-editor.exe'
     'codex-enhanced.exe' = Join-Path $bundle 'codex-enhanced.exe'
     'codex-code-mode-host.exe' = Join-Path $bundle 'codex-code-mode-host.exe'
-    'cli-editor-vscode.vsix' = Join-Path $bundle 'cli-editor-vscode.vsix'
+    'cli-editor.vsix' = Join-Path $bundle 'cli-editor.vsix'
 }
 $expectedArtifactNames = @($artifactPaths.Keys | Sort-Object)
 $actualArtifactNames = @($manifest.artifacts | ForEach-Object { [string]$_.name } | Sort-Object)
@@ -93,7 +93,7 @@ $expectedKey = ([IO.File]::ReadAllText((Join-Path $root 'compatibility\public-ke
 $actualKey = ([IO.File]::ReadAllText($generatedPublicKey)).Trim()
 if ($actualKey -ne $expectedKey) { throw 'signing key does not match the embedded release public key' }
 $requiredBundleFiles = @(
-    'cli-editor.exe', 'codex-enhanced.exe', 'codex-code-mode-host.exe', 'cli-editor-vscode.vsix',
+    'cli-editor.exe', 'codex-enhanced.exe', 'codex-code-mode-host.exe', 'cli-editor.vsix',
     'compatibility-manifest.json', 'compatibility-manifest.sig',
     'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md',
     'THIRD_PARTY_LICENSES_CLI_EDITOR.html', 'THIRD_PARTY_LICENSES_CODEX.html'

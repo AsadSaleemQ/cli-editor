@@ -77,7 +77,7 @@ try {
         'cli-editor.exe',
         'codex-enhanced.exe',
         'codex-code-mode-host.exe',
-        'cli-editor-vscode.vsix',
+        'cli-editor.vsix',
         'compatibility-manifest.json',
         'compatibility-manifest.sig'
     )

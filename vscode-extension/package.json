@@ -1,18 +1,23 @@
 {
-  "name": "cli-editor-vscode",
-  "displayName": "CLI Editor Terminal Bridge",
-  "description": "Routes prompt navigation and smart clipboard paste to terminal applications without VS Code intercepting the keys.",
-  "version": "0.2.0",
+  "name": "cli-editor",
+  "displayName": "CLI Editor",
+  "description": "Turn Codex CLI terminals into chat-style editors with smart clipboard paste and familiar shortcuts.",
+  "version": "0.3.0",
   "publisher": "asadsaleemq",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/AsadSaleemQ/cli-editor.git"
   },
+  "homepage": "https://github.com/AsadSaleemQ/cli-editor#readme",
+  "bugs": {
+    "url": "https://github.com/AsadSaleemQ/cli-editor/issues"
+  },
   "engines": {
     "vscode": "^1.90.0"
   },
   "categories": ["Other"],
+  "keywords": ["codex", "claude", "terminal", "chat", "clipboard"],
   "activationEvents": [
     "onCommand:cliEditor.promptHome",
     "onCommand:cliEditor.promptEnd",

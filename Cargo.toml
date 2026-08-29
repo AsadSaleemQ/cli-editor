@@ -4,7 +4,7 @@ version = "0.1.2"
 default-run = "cli-editor"
 edition = "2024"
 license = "Apache-2.0"
-description = "Opt-in desktop-style terminal composer launcher for Codex CLI and Claude Code"
+description = "Turn Codex CLI terminals into chat-style editors with smart clipboard paste and familiar shortcuts"
 repository = "https://github.com/AsadSaleemQ/cli-editor"
 rust-version = "1.95"
 

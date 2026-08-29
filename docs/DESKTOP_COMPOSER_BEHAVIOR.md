@@ -25,7 +25,7 @@
 | `Ctrl+Shift+Z` | Redo the last undone composer edit. `Ctrl+Y` remains the upstream yank binding. |
 
 Navigation and selections inside the editable prompt belong to the Codex composer rather than VS Code's rendered
-terminal buffer. The bundled Terminal Bridge sends `Ctrl+Home` and `Ctrl+End` to the active terminal application instead of allowing VS Code to consume them as terminal-history commands. Typing and deletion can replace a mouse-dragged prompt selection.
+terminal buffer. The bundled CLI Editor extension sends `Ctrl+Home` and `Ctrl+End` to the active terminal application instead of allowing VS Code to consume them as terminal-history commands. Typing and deletion can replace a mouse-dragged prompt selection.
 Terminal mouse capture is enabled while composer interaction is needed and restored on exit.
 
 When a wheel or two-finger touchpad gesture begins in the normal chat view, Codex releases mouse
@@ -53,4 +53,4 @@ image`. Large text pastes continue through Codex's existing large-paste placehol
 
 ## Scope
 
-The prompt-editing behavior applies to the enhanced Codex CLI, including its pre-session startup draft. The signed Windows bundle includes a small VS Code extension that contributes two terminal keybindings but does not patch VS Code. Named VS Code profiles maintain their own extensions and keybindings, so the companion must be enabled in the profile used by the terminal. The launcher does not patch Claude Code or the npm-installed native Codex package.
+The prompt-editing behavior applies to the enhanced Codex CLI, including its pre-session startup draft. The signed Windows bundle includes the CLI Editor VS Code extension, which contributes three terminal keybindings but does not patch VS Code. Named VS Code profiles maintain their own extensions and keybindings, so CLI Editor must be enabled in the profile used by the terminal. The launcher does not patch Claude Code or the npm-installed native Codex package.

@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $extensionRoot = Join-Path $root 'vscode-extension'
 $package = Get-Content -Raw -LiteralPath (Join-Path $extensionRoot 'package.json') | ConvertFrom-Json
-if ($package.publisher -ne 'asadsaleemq' -or $package.name -ne 'cli-editor-vscode') {
+if ($package.publisher -ne 'asadsaleemq' -or $package.name -ne 'cli-editor') {
     throw 'Unexpected VS Code extension identity'
 }
 $destination = [IO.Path]::GetFullPath($OutputPath)
@@ -37,7 +37,7 @@ $manifest = @"
   </Assets>
 </PackageManifest>
 "@
-$readme = "# CLI Editor Terminal Bridge`n`nBundled companion for [CLI Editor](https://github.com/AsadSaleemQ/cli-editor). It routes Ctrl+Home and Ctrl+End to the active terminal application instead of VS Code terminal scrollback, and routes Ctrl+V as text paste or terminal-native image paste based on the clipboard contents.`n"
+$readme = [IO.File]::ReadAllText((Join-Path $extensionRoot 'README.md'))
 $contentTypes = @"
 <?xml version="1.0" encoding="utf-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">

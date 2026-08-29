@@ -64,7 +64,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
     let helper_source = source_directory.join("codex-code-mode-host.exe");
     let manifest_source = source_directory.join("compatibility-manifest.json");
     let signature_source = source_directory.join("compatibility-manifest.sig");
-    let vscode_extension_source = source_directory.join("cli-editor-vscode.vsix");
+    let vscode_extension_source = source_directory.join("cli-editor.vsix");
     let verified = verify_release_bundle(
         source_directory,
         &source_dispatcher,
@@ -79,11 +79,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
             vscode_extension_source,
         ));
     }
-    verify_declared_artifact(
-        &verified,
-        "cli-editor-vscode.vsix",
-        &vscode_extension_source,
-    )?;
+    verify_declared_artifact(&verified, "cli-editor.vsix", &vscode_extension_source)?;
     if let Some(codex) = native_targets.get(&CliKind::Codex) {
         let version = normalized_version(&codex.version);
         if !verified.manifest.supports_codex(version) {
@@ -111,7 +107,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
     let vscode_extension = crate::vscode::install(&vscode_extension_source)?;
     if vscode_extension == crate::vscode::InstallOutcome::Unavailable {
         eprintln!(
-            "warning: VS Code was not discovered; the prompt-aware Ctrl+Home/End bridge was not installed"
+            "warning: VS Code was not discovered; the CLI Editor extension was not installed"
         );
     }
     let vscode_extension_added = vscode_extension == crate::vscode::InstallOutcome::Added;
@@ -220,7 +216,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
     if result? {
         println!("CLI Editor installed successfully.");
         if vscode_extension != crate::vscode::InstallOutcome::Unavailable {
-            println!("  reload VS Code once to activate prompt-aware Ctrl+Home/End routing");
+            println!("  reload VS Code once to activate chat-style terminal editing");
         }
         println!("  shims: {}", shim_directory.display());
         println!(
@@ -275,7 +271,7 @@ impl ReleaseBundle {
             dispatcher: directory.join("cli-editor.exe"),
             enhanced: directory.join("codex-enhanced.exe"),
             helper: directory.join("codex-code-mode-host.exe"),
-            vscode_extension: directory.join("cli-editor-vscode.vsix"),
+            vscode_extension: directory.join("cli-editor.vsix"),
             manifest: directory.join("compatibility-manifest.json"),
             signature: directory.join("compatibility-manifest.sig"),
         })
@@ -319,11 +315,7 @@ where
         &bundle.signature,
         prepared.highest_manifest_sequence,
     )?;
-    verify_declared_artifact(
-        &verified,
-        "cli-editor-vscode.vsix",
-        &bundle.vscode_extension,
-    )?;
+    verify_declared_artifact(&verified, "cli-editor.vsix", &bundle.vscode_extension)?;
     if verified.manifest.sequence <= prepared.highest_manifest_sequence {
         return Err(CliEditorError::NoUpdateAvailable);
     }
@@ -373,10 +365,7 @@ where
         atomic_copy(&bundle.dispatcher, &staging.join("cli-editor.exe"))?;
         atomic_copy(&bundle.enhanced, &staging.join("codex.exe"))?;
         atomic_copy(&bundle.helper, &staging.join("codex-code-mode-host.exe"))?;
-        atomic_copy(
-            &bundle.vscode_extension,
-            &staging.join("cli-editor-vscode.vsix"),
-        )?;
+        atomic_copy(&bundle.vscode_extension, &staging.join("cli-editor.vsix"))?;
         atomic_copy(
             &bundle.manifest,
             &staging.join("compatibility-manifest.json"),
@@ -394,8 +383,8 @@ where
         )?;
         verify_declared_artifact(
             &verified,
-            "cli-editor-vscode.vsix",
-            &staging.join("cli-editor-vscode.vsix"),
+            "cli-editor.vsix",
+            &staging.join("cli-editor.vsix"),
         )?;
         Ok::<_, CliEditorError>(())
     })();
@@ -1146,7 +1135,7 @@ pub(crate) fn uninstall() -> Result<()> {
     store.remove_with(|state| {
         if let Err(error) = crate::vscode::uninstall_if_owned(state.vscode_extension_added) {
             eprintln!(
-                "warning: {error}; core CLI Editor cleanup will continue, but the terminal bridge may need manual removal"
+                "warning: {error}; core CLI Editor cleanup will continue, but the VS Code extension may need manual removal"
             );
         }
         if state.path_entry_added
@@ -1795,7 +1784,7 @@ mod tests {
         let dispatcher = directory.path().join("cli-editor.exe");
         let enhanced = directory.path().join("codex-enhanced.exe");
         let helper = directory.path().join("codex-code-mode-host.exe");
-        let vscode_extension = directory.path().join("cli-editor-vscode.vsix");
+        let vscode_extension = directory.path().join("cli-editor.vsix");
         std::fs::write(&dispatcher, b"dispatcher").unwrap();
         std::fs::write(&enhanced, b"enhanced").unwrap();
         std::fs::write(&helper, b"helper").unwrap();
@@ -1804,7 +1793,7 @@ mod tests {
             ("cli-editor.exe", &dispatcher),
             ("codex-enhanced.exe", &enhanced),
             ("codex-code-mode-host.exe", &helper),
-            ("cli-editor-vscode.vsix", &vscode_extension),
+            ("cli-editor.vsix", &vscode_extension),
         ]
         .into_iter()
         .map(|(name, path)| Artifact {
@@ -1919,7 +1908,7 @@ mod tests {
         let dispatcher = bundle.join("cli-editor.exe");
         let enhanced = bundle.join("codex-enhanced.exe");
         let helper = bundle.join("codex-code-mode-host.exe");
-        let vscode_extension = bundle.join("cli-editor-vscode.vsix");
+        let vscode_extension = bundle.join("cli-editor.vsix");
         std::fs::copy(&current, &dispatcher).unwrap();
         std::fs::copy(&current, &enhanced).unwrap();
         std::fs::write(&helper, b"helper").unwrap();
@@ -1936,7 +1925,7 @@ mod tests {
             ("cli-editor.exe", &dispatcher),
             ("codex-enhanced.exe", &enhanced),
             ("codex-code-mode-host.exe", &helper),
-            ("cli-editor-vscode.vsix", &vscode_extension),
+            ("cli-editor.vsix", &vscode_extension),
         ]
         .into_iter()
         .map(|(name, path)| Artifact {

@@ -97,7 +97,7 @@ $env:CARGO_ENCODED_RUSTFLAGS = (@(
 if ($LASTEXITCODE -ne 0) { throw 'patched Codex build failed' }
 
 [IO.Directory]::CreateDirectory($bundle) | Out-Null
-$vscodeExtensionName = 'cli-editor-vscode.vsix'
+$vscodeExtensionName = 'cli-editor.vsix'
 & (Join-Path $root 'scripts\build_vscode_extension.ps1') -OutputPath (Join-Path $bundle $vscodeExtensionName)
 $files = [ordered]@{
     'cli-editor.exe' = Join-Path $root 'target\release\cli-editor.exe'

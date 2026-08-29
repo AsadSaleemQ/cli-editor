@@ -1,22 +1,44 @@
 # CLI Editor
 
-CLI Editor brings desktop-style prompt editing to Codex CLI on Windows while preserving the native command-line tools, process behavior, and an explicit compatibility boundary. It combines an enhanced Codex build, a small Windows launcher, and a VS Code terminal companion into one reversible installation.
+**Turn Codex CLI terminals into chat-style editors with smart clipboard paste and familiar shortcuts.**
 
-Claude Code is supported as a validated native pass-through. It is never patched or redistributed, so Claude retains its own interface rather than the enhanced Codex composer.
+Click to place the cursor, select with the mouse or keyboard, copy and cut, paste text or images, undo and redo, and navigate long drafts like a desktop chat composer.
+
+One repository ships the complete product: an enhanced Codex build, the `cli-editor` launcher, and the `asadsaleemq.cli-editor` VS Code extension. Claude Code is supported as a validated native pass-through and can use terminal-level Smart Paste, but CLI Editor never patches or redistributes Claude Code.
+
+## Chat-style controls
+
+### Keyboard shortcuts
+
+| Shortcut | Behavior | Scope |
+|---|---|---|
+| `Ctrl+A` | Select the complete editable prompt. | Enhanced Codex |
+| `Home` / `End` | Move to the start / end of the current prompt line. | Enhanced Codex |
+| `Ctrl+Home` / `Ctrl+End` | Move to the start / end of the complete prompt. | Enhanced Codex via the extension |
+| `Shift+Left` / `Shift+Right` | Extend or shrink the selection by one character. | Enhanced Codex |
+| `Shift+Up` / `Shift+Down` | Extend the selection across lines. | Enhanced Codex |
+| `Shift+Home` / `Shift+End` | Select to the start / end of the current line. | Enhanced Codex |
+| `Ctrl+Shift+Left` / `Ctrl+Shift+Right` | Extend the selection by word. | Enhanced Codex |
+| `Ctrl+Shift+Home` / `Ctrl+Shift+End` | Select to the start / end of the complete prompt. | Enhanced Codex |
+| `Ctrl+C` | Copy selected prompt text; without a selection, preserve interrupt/cancel. | Enhanced Codex |
+| `Ctrl+X` | Cut the selected prompt text. | Enhanced Codex |
+| `Ctrl+V` | Paste clipboard text, or pass terminal-native image paste when no text is present. | VS Code terminal, including Codex and Claude Code |
+| `Ctrl+Alt+V` | Force clipboard-image paste. | Enhanced Codex |
+| `Ctrl+Z` | Undo the last prompt edit. | Enhanced Codex |
+| `Ctrl+Shift+Z` | Redo the last undone prompt edit. | Enhanced Codex |
+| `Backspace` / `Delete` | Delete the complete selected range. | Enhanced Codex |
+
+### Mouse and scrolling
+
+| Input | Behavior |
+|---|---|
+| Click | Place the prompt cursor. |
+| Click and drag | Select prompt text across lines. |
+| Double-click / triple-click | Select a word / line. |
+| Mouse wheel / touchpad | Hand scrolling back to VS Code terminal history; the next edit restores prompt interaction. |
+| Completed response selection | Select and copy terminal output normally when the prompt is empty. |
 
 ## Capabilities
-
-### Desktop prompt editing for Codex
-
-- Place the cursor with the mouse and drag across multiple lines to select text.
-- Double-click words and triple-click lines.
-- Use familiar selection shortcuts: Shift+Arrow, Shift+Home/End, Ctrl+Shift+Arrow, and Ctrl+Shift+Home/End.
-- Use Ctrl+A, Ctrl+C, Ctrl+X, and Ctrl+V with normal desktop semantics while preserving Codex interrupt behavior when nothing is selected.
-- Paste either clipboard text or images, with Ctrl+Alt+V available to force image paste.
-- Undo and redo composer edits with Ctrl+Z and Ctrl+Shift+Z.
-- Move within a line with Home/End and across the complete draft with Ctrl+Home/End.
-- Scroll terminal history with the mouse wheel or touchpad, then resume editing from the keyboard or composer.
-- Select completed transcript text without sacrificing mouse editing of a non-empty draft.
 
 ### Launcher and CLI integration
 
@@ -44,7 +66,7 @@ Download the latest Windows x64 ZIP and adjacent `.sha256` file from [GitHub Rel
 .\cli-editor.exe install
 ```
 
-CLI Editor installs its per-user launcher and, when VS Code is available, the bundled terminal companion. Reload VS Code after installation. Named VS Code profiles must have the companion extension and its Ctrl+Home/End and Ctrl+V bindings in the profile used by the terminal.
+CLI Editor installs its per-user launcher and, when VS Code is available, the bundled **CLI Editor** extension. Reload VS Code after installation. Named VS Code profiles must enable the extension in the profile used by the terminal.
 
 Open a new terminal so it inherits the updated user PATH, then try:
 

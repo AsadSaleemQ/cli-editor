@@ -10,7 +10,7 @@ Do not open a public issue for a suspected vulnerability. Use GitHub's private v
 
 ## Trust model
 
-The release manifest signs the companion VSIX as an artifact. Its prompt-navigation commands send fixed Ctrl+Home and Ctrl+End escape sequences to the active terminal. Its smart-paste command reads clipboard text only to choose between VS Code text paste and terminal-native image paste; it does not store or transmit clipboard, prompt, or transcript content. VS Code user or profile keybindings determine whether those commands receive the corresponding chords.
+The release manifest signs the CLI Editor VSIX as an artifact. Its prompt-navigation commands send fixed Ctrl+Home and Ctrl+End escape sequences to the active terminal. Its smart-paste command reads clipboard text only to choose between VS Code text paste and terminal-native image paste; it does not store or transmit clipboard, prompt, or transcript content. VS Code user or profile keybindings determine whether those commands receive the corresponding chords.
 
 CLI Editor protects against release-asset substitution, network/CDN tampering, cached-manifest corruption, sequence rollback, unsafe PATH discovery, shim recursion, and incompatible enhanced activation. It does not claim to protect against arbitrary code already executing as the same Windows user.
 

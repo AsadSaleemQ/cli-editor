@@ -42,7 +42,7 @@ try {
     [IO.File]::Copy((Resolve-Path $SignerPath), (Join-Path $releaseTools 'sign_release.exe'), $false)
     [IO.File]::Copy((Join-Path $repository 'compatibility\manifest.schema.json'), (Join-Path $caseRoot 'compatibility\manifest.schema.json'), $false)
     [IO.File]::WriteAllText((Join-Path $caseRoot 'compatibility\public-key.hex'), "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a`n", (New-Object Text.UTF8Encoding($false)))
-    foreach ($name in @('cli-editor.exe', 'codex-enhanced.exe', 'codex-code-mode-host.exe', 'cli-editor-vscode.vsix')) {
+    foreach ($name in @('cli-editor.exe', 'codex-enhanced.exe', 'codex-code-mode-host.exe', 'cli-editor.vsix')) {
         [IO.File]::WriteAllText((Join-Path $bundle $name), "fixture-$name", (New-Object Text.UTF8Encoding($false)))
     }
     foreach ($name in @('LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md', 'THIRD_PARTY_LICENSES_CLI_EDITOR.html', 'THIRD_PARTY_LICENSES_CODEX.html')) {
@@ -50,7 +50,7 @@ try {
     }
     [IO.File]::WriteAllText((Join-Path $artifactsRoot "cli-editor-$version.sbom.json"), '{}', (New-Object Text.UTF8Encoding($false)))
     [IO.File]::WriteAllText((Join-Path $artifactsRoot "cli-editor-$version-source.zip"), 'fixture-source', (New-Object Text.UTF8Encoding($false)))
-    $artifacts = foreach ($name in @('cli-editor.exe', 'codex-enhanced.exe', 'codex-code-mode-host.exe', 'cli-editor-vscode.vsix')) {
+    $artifacts = foreach ($name in @('cli-editor.exe', 'codex-enhanced.exe', 'codex-code-mode-host.exe', 'cli-editor.vsix')) {
         $file = Get-Item -LiteralPath (Join-Path $bundle $name)
         [ordered]@{ name = $name; url = "https://example.invalid/$name"; sha256 = Get-Sha256 $file.FullName; size = [uint64]$file.Length }
     }

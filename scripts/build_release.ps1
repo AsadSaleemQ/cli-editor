@@ -6,8 +6,8 @@ param(
     [uint64] $IssuedUnix = 0,
     [string] $CodexVersion = '0.148.0',
     [string] $Repository = 'AsadSaleemQ/cli-editor',
-    [string[]] $VsCodeVersions = @('1.134.0'),
-    [string[]] $ClaudeVersions = @('2.1.240')
+    [string[]] $VsCodeVersions = @('1.134.0', '1.135.0'),
+    [string[]] $ClaudeVersions = @('2.1.240', '2.1.251')
 )
 
 $ErrorActionPreference = 'Stop'

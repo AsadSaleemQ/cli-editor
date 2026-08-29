@@ -12,7 +12,7 @@ if ($manifestWriteIndex -lt 0 -or $manifestHashIndex -lt 0 -or $manifestWriteInd
 $caseName = "finalizer-$PID-$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
 $caseRoot = Join-Path $repository ".work\$caseName"
 $trashRoot = Join-Path $repository '.trash'
-$version = '0.1.0'
+$version = '0.1.1'
 $issued = 1800000000
 $sequence = 1
 $expires = $issued + 86400
@@ -60,7 +60,7 @@ try {
         issued_unix = $issued
         expires_unix = $expires
         minimum_dispatcher_version = $version
-        compatibility = @([ordered]@{ codex = '0.148.0'; vscode = @('fixture'); claude = @('2.1.240') })
+        compatibility = @([ordered]@{ codex = '0.148.0'; vscode = @('fixture'); claude = @('2.1.251') })
         artifacts = @($artifacts)
     }
     [IO.File]::WriteAllText((Join-Path $bundle 'compatibility-manifest.json'), ($manifest | ConvertTo-Json -Depth 8) + "`n", (New-Object Text.UTF8Encoding($false)))

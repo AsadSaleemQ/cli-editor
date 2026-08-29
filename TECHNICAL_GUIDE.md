@@ -9,7 +9,7 @@ A release bundle contains:
 - `cli-editor.exe`: installer, dispatcher, compatibility guard, updater, doctor, and uninstaller.
 - `codex-enhanced.exe`: the pinned Codex build with the desktop composer patch.
 - `codex-code-mode-host.exe`: the matching upstream code-mode helper.
-- `cli-editor-vscode.vsix`: a minimal companion that preserves native terminal scrolling unless live CLI Editor state says the active Codex prompt owns input.
+- `cli-editor-vscode.vsix`: a minimal companion that routes prompt-boundary keys while a live enhanced Codex process belongs to the active terminal and otherwise preserves native terminal scrolling.
 - `compatibility-manifest.json` and `.sig`: Ed25519-signed artifact and compatibility metadata.
 - `THIRD_PARTY_LICENSES_CLI_EDITOR.html` and `THIRD_PARTY_LICENSES_CODEX.html`: generated dependency license texts for the two Rust binary sets.
 

@@ -25,7 +25,7 @@
 | `Ctrl+Shift+Z` | Redo the last undone composer edit. `Ctrl+Y` remains the upstream yank binding. |
 
 Navigation and selections inside the editable prompt belong to the Codex composer rather than VS Code's rendered
-terminal buffer. The bundled Terminal Bridge forwards `Ctrl+Home` and `Ctrl+End` only while the active CLI Editor composer owns input. When capture is released or no matching live CLI Editor process exists, it invokes VS Code's native terminal-top or terminal-bottom command instead. Typing and deletion can replace a mouse-dragged prompt selection.
+terminal buffer. The bundled Terminal Bridge forwards `Ctrl+Home` and `Ctrl+End` while a matching live enhanced Codex process exists, including while mouse capture is released for scrollback. With no matching live process, it invokes VS Code's native terminal-top or terminal-bottom command instead. Typing and deletion can replace a mouse-dragged prompt selection.
 Terminal mouse capture is enabled while composer interaction is needed and restored on exit.
 
 When a wheel or two-finger touchpad gesture begins in the normal chat view, Codex releases mouse
@@ -53,4 +53,4 @@ image`. Large text pastes continue through Codex's existing large-paste placehol
 
 ## Scope
 
-The prompt-editing behavior applies to the custom Codex CLI, including its pre-session startup draft. The signed Windows bundle includes a small VS Code extension that contributes two terminal keybindings but does not rewrite user settings. It defaults safely to native VS Code scrolling for Claude Code, ordinary terminals, stale or malformed bridge state, and any process that is not the active CLI Editor Codex session. The launcher does not patch Claude Code, VS Code, or the npm Codex package.
+The prompt-editing behavior applies to the custom Codex CLI, including its pre-session startup draft. The signed Windows bundle includes a small VS Code extension that contributes two terminal keybindings but does not rewrite user settings. It defaults safely to native VS Code scrolling for Claude Code, ordinary terminals, stale or malformed bridge state, and any terminal without a live CLI Editor Codex session. The launcher does not patch Claude Code, VS Code, or the npm Codex package.

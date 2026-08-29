@@ -37,7 +37,7 @@ $manifest = @"
   </Assets>
 </PackageManifest>
 "@
-$readme = "# CLI Editor Terminal Bridge`n`nBundled companion for [CLI Editor](https://github.com/AsadSaleemQ/cli-editor). It preserves VS Code terminal defaults unless the active CLI Editor prompt owns input.`n"
+$readme = "# CLI Editor Terminal Bridge`n`nBundled companion for [CLI Editor](https://github.com/AsadSaleemQ/cli-editor). It routes prompt-boundary keys while a live enhanced Codex process belongs to the active terminal and otherwise preserves VS Code terminal defaults.`n"
 $contentTypes = @"
 <?xml version="1.0" encoding="utf-8"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">

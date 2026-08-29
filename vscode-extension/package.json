@@ -1,8 +1,8 @@
 {
   "name": "cli-editor-vscode",
   "displayName": "CLI Editor Terminal Bridge",
-  "description": "Routes prompt-boundary keys only while CLI Editor owns the active Codex prompt.",
-  "version": "0.1.0",
+  "description": "Routes prompt-boundary keys while enhanced Codex is active in the terminal.",
+  "version": "0.1.1",
   "publisher": "asadsaleemq",
   "license": "Apache-2.0",
   "engines": {

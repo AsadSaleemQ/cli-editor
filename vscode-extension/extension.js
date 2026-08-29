@@ -12,7 +12,7 @@ function processIsAlive(pid) {
   }
 }
 
-function readPromptState(directory, terminalPid, io = fs, isAlive = processIsAlive) {
+function hasLiveSession(directory, terminalPid, io = fs, isAlive = processIsAlive) {
   if (!Number.isInteger(terminalPid) || terminalPid <= 0) return false;
   let names;
   try {
@@ -20,20 +20,18 @@ function readPromptState(directory, terminalPid, io = fs, isAlive = processIsAli
   } catch (_) {
     return false;
   }
-  const matches = [];
   for (const name of names) {
     const file = path.join(directory, name);
     try {
       const record = JSON.parse(io.readFileSync(file, 'utf8'));
       if (record.schema_version !== 1 || !isAlive(record.pid)) continue;
       if (!Array.isArray(record.console_pids) || !record.console_pids.includes(terminalPid)) continue;
-      matches.push({ active: record.prompt_active === true, mtime: io.statSync(file).mtimeMs });
+      return true;
     } catch (_) {
       // A writer may be replacing the tiny record. Falling back is always safe.
     }
   }
-  matches.sort((left, right) => right.mtime - left.mtime);
-  return matches.length > 0 && matches[0].active;
+  return false;
 }
 
 async function route(vscode, sequence, fallbackCommand) {
@@ -42,7 +40,7 @@ async function route(vscode, sequence, fallbackCommand) {
   const terminalPid = await terminal.processId;
   const localAppData = process.env.LOCALAPPDATA;
   const directory = localAppData && path.join(localAppData, 'CLIEditor', 'vscode-bridge');
-  if (directory && readPromptState(directory, terminalPid)) {
+  if (directory && hasLiveSession(directory, terminalPid)) {
     terminal.sendText(sequence, false);
     return;
   }
@@ -61,4 +59,4 @@ function activate(context) {
 
 function deactivate() {}
 
-module.exports = { activate, deactivate, readPromptState, route };
+module.exports = { activate, deactivate, hasLiveSession, route };

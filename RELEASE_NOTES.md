@@ -1,6 +1,11 @@
-# CLI Editor v0.1.0
+# CLI Editor v0.1.1
 
-Initial Windows x64 release of CLI Editor.
+Windows x64 patch release of CLI Editor.
+
+## Corrected
+
+- Ctrl+Home and Ctrl+End now stay routed to a live enhanced Codex composer after wheel or completed-turn scrollback handoff.
+- VS Code bridge tests cover both boundary keys, inactive-capture routing, and native terminal fallback after the enhanced process exits.
 
 ## Included
 
@@ -10,7 +15,7 @@ Initial Windows x64 release of CLI Editor.
 
 ## Compatibility
 
-Validated baseline: Windows 11 x64, VS Code 1.134.0, Codex CLI 0.148.0, and native Claude Code 2.1.240. Claude Code is not modified or redistributed.
+Validated baseline: Windows 11 x64, VS Code 1.134.0 and 1.135.0, Codex CLI 0.148.0, and native Claude Code 2.1.240 and 2.1.251. Claude Code is not modified or redistributed.
 
 ## Integrity
 

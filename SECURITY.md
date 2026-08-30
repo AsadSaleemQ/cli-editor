@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-Only the newest published CLI Editor release is supported. Compatibility with Codex, Claude Code, and VS Code is narrower than binary support and is declared by the signed compatibility manifest.
+Only the newest published CLI Editor release is supported. Compatibility with Codex and VS Code is narrower than binary support and is declared by the signed compatibility manifest.
 
 ## Report a vulnerability
 

@@ -34,7 +34,7 @@ impl DiscoveryOptions {
     }
 }
 
-pub fn discover_native(kind: CliKind, options: &DiscoveryOptions) -> Result<NativeTarget> {
+pub fn discover_native(options: &DiscoveryOptions) -> Result<NativeTarget> {
     let excluded = canonical_existing_dirs([&options.current_dir, &options.shim_dir]);
     for directory in std::env::split_paths(&options.path) {
         if directory.as_os_str().is_empty()
@@ -43,26 +43,20 @@ pub fn discover_native(kind: CliKind, options: &DiscoveryOptions) -> Result<Nati
         {
             continue;
         }
-        for name in candidate_names(kind) {
+        for name in candidate_names() {
             let candidate = directory.join(name);
             if !candidate.is_file() {
                 continue;
             }
-            if let Some(resolved) = resolve_candidate(kind, &candidate)? {
-                return inspect_target(
-                    kind,
-                    &resolved.path,
-                    &resolved.package_root,
-                    resolved.identity,
-                );
+            if let Some(resolved) = resolve_candidate(&candidate)? {
+                return inspect_target(&resolved.path, &resolved.package_root, resolved.identity);
             }
         }
     }
-    Err(CliEditorError::TargetNotFound(kind))
+    Err(CliEditorError::TargetNotFound(CliKind::Codex))
 }
 
 pub(crate) fn inspect_target(
-    kind: CliKind,
     path: &Path,
     package_root: &Path,
     package_identity: String,
@@ -96,42 +90,31 @@ pub(crate) fn inspect_target(
         sha256: sha256_file(&path)?,
         path,
         package_root,
-        package_identity: format!("{}:{package_identity}", kind.as_str()),
+        package_identity: format!("codex:{package_identity}"),
         version,
         file_size: metadata.len(),
         modified_unix_ms,
     })
 }
 
-pub(crate) fn refresh_recorded_target(
-    kind: CliKind,
-    recorded: &NativeTarget,
-) -> Result<NativeTarget> {
-    let resolved = resolve_recorded_target(kind, recorded)?;
-    let refreshed = inspect_target(
-        kind,
-        &resolved.path,
-        &resolved.package_root,
-        resolved.identity,
-    )?;
+pub(crate) fn refresh_recorded_target(recorded: &NativeTarget) -> Result<NativeTarget> {
+    let resolved = resolve_recorded_target(recorded)?;
+    let refreshed = inspect_target(&resolved.path, &resolved.package_root, resolved.identity)?;
     if !same_package_identity(&recorded.package_identity, &refreshed.package_identity) {
         return Err(CliEditorError::TargetChanged(recorded.path.clone()));
     }
     Ok(refreshed)
 }
 
-pub(crate) fn validate_recorded_target_identity(
-    kind: CliKind,
-    recorded: &NativeTarget,
-) -> Result<()> {
-    resolve_recorded_target(kind, recorded).map(|_| ())
+pub(crate) fn validate_recorded_target_identity(recorded: &NativeTarget) -> Result<()> {
+    resolve_recorded_target(recorded).map(|_| ())
 }
 
-fn resolve_recorded_target(kind: CliKind, recorded: &NativeTarget) -> Result<ResolvedCandidate> {
+fn resolve_recorded_target(recorded: &NativeTarget) -> Result<ResolvedCandidate> {
     let path = recorded.path.canonicalize().map_err(|source| {
         if source.kind() == std::io::ErrorKind::NotFound {
             CliEditorError::NativeTargetMissing {
-                kind,
+                kind: CliKind::Codex,
                 path: recorded.path.clone(),
             }
         } else {
@@ -150,13 +133,12 @@ fn resolve_recorded_target(kind: CliKind, recorded: &NativeTarget) -> Result<Res
         return Err(CliEditorError::TargetChanged(recorded.path.clone()));
     }
 
-    let native_identity = format!("{}:native-executable", kind.as_str());
+    let native_identity = "codex:native-executable";
     let identity = if recorded.package_identity == native_identity {
         "native-executable".into()
-    } else if kind == CliKind::Codex
-        && recorded
-            .package_identity
-            .starts_with("codex:@openai/codex@")
+    } else if recorded
+        .package_identity
+        .starts_with("codex:@openai/codex@")
     {
         let package_json_path = package_root.join("package.json");
         let package_json: PackageJson = serde_json::from_slice(
@@ -168,22 +150,6 @@ fn resolve_recorded_target(kind: CliKind, recorded: &NativeTarget) -> Result<Res
             return Err(CliEditorError::TargetChanged(recorded.path.clone()));
         }
         format!("@openai/codex@{}", package_json.version)
-    } else if kind == CliKind::Claude
-        && recorded
-            .package_identity
-            .starts_with("claude:@anthropic-ai/claude-code@")
-    {
-        let package_json_path = package_root.join("package.json");
-        let package_json: PackageJson = serde_json::from_slice(
-            &std::fs::read(&package_json_path)
-                .map_err(|source| CliEditorError::io(&package_json_path, source))?,
-        )?;
-        if package_json.name != "@anthropic-ai/claude-code"
-            || !is_expected_npm_claude_path(&path, &package_root)
-        {
-            return Err(CliEditorError::TargetChanged(recorded.path.clone()));
-        }
-        format!("@anthropic-ai/claude-code@{}", package_json.version)
     } else {
         return Err(CliEditorError::TargetChanged(recorded.path.clone()));
     };
@@ -196,16 +162,7 @@ fn resolve_recorded_target(kind: CliKind, recorded: &NativeTarget) -> Result<Res
 pub(crate) fn same_package_identity(previous: &str, next: &str) -> bool {
     previous == next
         || previous == "codex:native-executable" && next == "codex:native-executable"
-        || previous == "claude:native-executable" && next == "claude:native-executable"
         || previous.starts_with("codex:@openai/codex@") && next.starts_with("codex:@openai/codex@")
-        || previous.starts_with("claude:@anthropic-ai/claude-code@")
-            && next.starts_with("claude:@anthropic-ai/claude-code@")
-}
-
-fn is_expected_npm_claude_path(path: &Path, package_root: &Path) -> bool {
-    path.strip_prefix(package_root)
-        .ok()
-        .is_some_and(|relative| relative == Path::new(r"bin\claude.exe"))
 }
 fn is_expected_npm_codex_path(path: &Path, package_root: &Path) -> bool {
     let relative = path.strip_prefix(package_root).ok();
@@ -239,18 +196,13 @@ struct ResolvedCandidate {
     identity: String,
 }
 
-fn resolve_candidate(kind: CliKind, candidate: &Path) -> Result<Option<ResolvedCandidate>> {
-    match kind {
-        CliKind::Codex if has_npm_shim_extension(candidate) => {
-            resolve_npm_codex(candidate).map(Some)
-        }
-        CliKind::Claude if has_npm_shim_extension(candidate) => {
-            resolve_npm_claude(candidate).map(Some)
-        }
-        CliKind::Codex | CliKind::Claude if has_script_extension(candidate) => {
+fn resolve_candidate(candidate: &Path) -> Result<Option<ResolvedCandidate>> {
+    match candidate {
+        candidate if has_npm_shim_extension(candidate) => resolve_npm_codex(candidate).map(Some),
+        candidate if has_script_extension(candidate) => {
             Err(CliEditorError::UnsafeTarget(candidate.to_path_buf()))
         }
-        CliKind::Codex | CliKind::Claude if has_exe_extension(candidate) => {
+        candidate if has_exe_extension(candidate) => {
             let package_root = candidate
                 .parent()
                 .ok_or_else(|| CliEditorError::UnsafeTarget(candidate.to_path_buf()))?
@@ -261,7 +213,7 @@ fn resolve_candidate(kind: CliKind, candidate: &Path) -> Result<Option<ResolvedC
                 identity: "native-executable".into(),
             }))
         }
-        CliKind::Codex | CliKind::Claude => Ok(None),
+        _ => Ok(None),
     }
 }
 
@@ -310,29 +262,6 @@ fn resolve_npm_codex(shim: &Path) -> Result<ResolvedCandidate> {
     })
 }
 
-fn resolve_npm_claude(shim: &Path) -> Result<ResolvedCandidate> {
-    let npm_root = shim
-        .parent()
-        .ok_or_else(|| CliEditorError::UnsafeTarget(shim.to_path_buf()))?;
-    let package_root = npm_root
-        .join("node_modules")
-        .join("@anthropic-ai")
-        .join("claude-code");
-    let package_json_path = package_root.join("package.json");
-    let package_json = read_official_package_json(shim, &package_json_path)?;
-    if package_json.name != "@anthropic-ai/claude-code" {
-        return Err(CliEditorError::UnsupportedLauncher(shim.to_path_buf()));
-    }
-    let path = package_root.join("bin").join("claude.exe");
-    if !path.is_file() {
-        return Err(CliEditorError::TargetNotFound(CliKind::Claude));
-    }
-    Ok(ResolvedCandidate {
-        path,
-        package_root,
-        identity: format!("@anthropic-ai/claude-code@{}", package_json.version),
-    })
-}
 pub(crate) const NATIVE_VERSION_PROBE_TIMEOUT: std::time::Duration =
     std::time::Duration::from_secs(60);
 pub(crate) const RELEASE_VERSION_PROBE_TIMEOUT: std::time::Duration =
@@ -457,11 +386,8 @@ fn probe_version_with_timeout(path: &Path, timeout: std::time::Duration) -> Resu
     }
     Ok(version.to_owned())
 }
-fn candidate_names(kind: CliKind) -> &'static [&'static str] {
-    match kind {
-        CliKind::Codex => &["codex.exe", "codex.bat", "codex.cmd", "codex.ps1"],
-        CliKind::Claude => &["claude.exe", "claude.bat", "claude.cmd", "claude.ps1"],
-    }
+fn candidate_names() -> &'static [&'static str] {
+    &["codex.exe", "codex.bat", "codex.cmd", "codex.ps1"]
 }
 
 fn canonical_existing_dirs<'a>(directories: impl IntoIterator<Item = &'a PathBuf>) -> Vec<PathBuf> {
@@ -511,7 +437,7 @@ impl CliKind {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Codex => "codex",
-            Self::Claude => "claude",
+            Self::LegacyClaude => "claude",
         }
     }
 }

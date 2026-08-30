@@ -36,28 +36,12 @@ pub(crate) fn status() -> Result<()> {
             "native"
         }
     );
-    println!(
-        "  Claude default: {}{}",
-        if state.defaults.claude_managed {
-            "managed native"
-        } else {
-            "native"
-        },
-        if state.defaults.claude_strict {
-            " (strict)"
-        } else {
-            ""
-        }
-    );
-    for kind in [CliKind::Codex, CliKind::Claude] {
-        if let Some(target) = state.native_targets.get(&kind) {
-            println!(
-                "  {} native: {} [{}]",
-                kind.as_str(),
-                target.path.display(),
-                target.version
-            );
-        }
+    if let Some(target) = state.native_targets.get(&CliKind::Codex) {
+        println!(
+            "  codex native: {} [{}]",
+            target.path.display(),
+            target.version
+        );
     }
     if let Some(release) = &state.active_release {
         println!(
@@ -68,24 +52,25 @@ pub(crate) fn status() -> Result<()> {
     }
     println!(
         "  native adoptions recorded: {}",
-        state.adoption_history.len()
-    );
-    for kind in [CliKind::Codex, CliKind::Claude] {
-        if let Some(record) = state
+        state
             .adoption_history
             .iter()
-            .rev()
-            .find(|record| record.cli == kind)
-        {
-            println!(
-                "  latest {} adoption: {} -> {} at {} ms [{}]",
-                kind.as_str(),
-                record.old_version,
-                record.new_version,
-                record.timestamp_unix_ms,
-                record.package_root.display()
-            );
-        }
+            .filter(|record| record.cli == CliKind::Codex)
+            .count()
+    );
+    if let Some(record) = state
+        .adoption_history
+        .iter()
+        .rev()
+        .find(|record| record.cli == CliKind::Codex)
+    {
+        println!(
+            "  latest codex adoption: {} -> {} at {} ms [{}]",
+            record.old_version,
+            record.new_version,
+            record.timestamp_unix_ms,
+            record.package_root.display()
+        );
     }
     Ok(())
 }
@@ -108,9 +93,10 @@ pub(crate) fn doctor(json: bool) -> Result<i32> {
     };
 
     let mut checks = Vec::new();
-    for kind in [CliKind::Codex, CliKind::Claude] {
+    let kind = CliKind::Codex;
+    {
         let (ok, detail) = match state.native_targets.get(&kind) {
-            Some(target) => match validate_native_metadata(kind, target) {
+            Some(target) => match validate_native_metadata(target) {
                 Ok(()) => (
                     true,
                     format!("{} [{}]", target.path.display(), target.version),
@@ -156,9 +142,6 @@ pub(crate) fn doctor(json: bool) -> Result<i32> {
         if state.native_targets.contains_key(&CliKind::Codex) {
             expected_shims.push(("codex", "codex.exe"));
         }
-        if state.native_targets.contains_key(&CliKind::Claude) {
-            expected_shims.push(("claude", "claude.exe"));
-        }
         for (command, name) in expected_shims {
             let path = shim.join(name);
             checks.push(Check {
@@ -192,7 +175,12 @@ pub(crate) fn doctor(json: bool) -> Result<i32> {
         installed: true,
         healthy,
         checks,
-        adoption_history: state.adoption_history.clone(),
+        adoption_history: state
+            .adoption_history
+            .iter()
+            .filter(|record| record.cli == CliKind::Codex)
+            .cloned()
+            .collect(),
     };
     print_report(&report, json)?;
     Ok(if healthy { 0 } else { 1 })
@@ -263,7 +251,7 @@ mod tests {
             }],
             adoption_history: vec![AdoptionRecord {
                 timestamp_unix_ms: 123,
-                cli: CliKind::Claude,
+                cli: CliKind::Codex,
                 package_root: r"C:\native".into(),
                 old_version: "1.0.0".into(),
                 new_version: "1.0.1".into(),
@@ -274,7 +262,7 @@ mod tests {
 
         let json = serde_json::to_value(report).expect("doctor report");
         let adoption = &json["adoption_history"][0];
-        assert_eq!(adoption["cli"], "claude");
+        assert_eq!(adoption["cli"], "codex");
         assert_eq!(adoption["old_version"], "1.0.0");
         assert_eq!(adoption["new_version"], "1.0.1");
         assert_eq!(adoption["timestamp_unix_ms"], 123);

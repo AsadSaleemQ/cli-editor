@@ -5,26 +5,14 @@ use super::Cli;
 use super::Command;
 
 #[test]
-fn parses_strict_claude_default() {
-    let cli = Cli::try_parse_from(["cli-editor", "default", "claude", "--strict"])
-        .expect("command should parse");
+fn accepts_codex_and_rejects_claude_targets() {
+    let cli = Cli::try_parse_from(["cli-editor", "default", "codex"])
+        .expect("Codex default should parse");
+    assert!(matches!(cli.command, Some(Command::Default { .. })));
 
-    assert!(matches!(
-        cli.command,
-        Some(Command::Default {
-            strict: true,
-            no_strict: false,
-            ..
-        })
-    ));
-}
-
-#[test]
-fn rejects_conflicting_strict_flags() {
-    let error = Cli::try_parse_from(["cli-editor", "default", "claude", "--strict", "--no-strict"])
-        .expect_err("flags should conflict");
-
-    assert_eq!(error.kind(), clap::error::ErrorKind::ArgumentConflict);
+    let error = Cli::try_parse_from(["cli-editor", "default", "claude"])
+        .expect_err("Claude must not be a supported target");
+    assert_eq!(error.kind(), clap::error::ErrorKind::InvalidValue);
 }
 #[test]
 fn update_requires_an_explicit_bundle_directory() {
@@ -44,5 +32,13 @@ fn version_identifies_the_unofficial_distribution() {
     let version = Cli::command().render_version().to_string();
     assert!(version.contains(env!("CARGO_PKG_VERSION")));
     assert!(version.contains("unofficial"));
-    assert!(version.contains("not affiliated with OpenAI, Anthropic, or Microsoft"));
+    assert!(version.contains("not affiliated with OpenAI or Microsoft"));
+}
+
+#[test]
+fn help_describes_only_codex_routes() {
+    let help = Cli::command().render_long_help().to_string();
+    assert!(help.contains("Codex-only CLI Editor launcher"));
+    assert!(help.contains("signed Codex-only release bundle"));
+    assert!(!help.contains("Claude"));
 }

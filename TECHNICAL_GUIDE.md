@@ -20,34 +20,30 @@ cli-editor install [--dry-run]
 cli-editor status
 cli-editor doctor [--json]
 cli-editor default codex
-cli-editor default claude|all [--strict|--no-strict]
-cli-editor restore codex|claude|all
+cli-editor restore codex
 cli-editor update --bundle DIRECTORY
 cli-editor rollback [--release RELEASE]
-cli-editor repair --adopt-native codex|claude
+cli-editor repair --adopt-native codex
 cli-editor uninstall
-cli-editor run codex|claude -- ARGS...
+cli-editor run codex -- ARGS...
 codex cli-editor [-- CODEX_ARGS...]
-claude cli-editor [-- CLAUDE_ARGS...]
 ```
 
-Installation adds one owned shim directory to the beginning of the current user's PATH and broadcasts the Windows environment change. When VS Code is safely discovered beside its official CLI launcher, installation adds the bundled CLI Editor extension and records ownership so uninstall removes only an extension CLI Editor added. VS Code profiles maintain separate extension and keybinding registries, so the extension and its bindings must exist in the profile that owns the terminal workspace. Strict flags apply only to Claude or `all`; `default all` preserves the existing Claude strict setting unless `--strict` or `--no-strict` is explicit. A default request fails without changing state when its native CLI was not discovered; after installing that CLI, `cli-editor repair --adopt-native codex|claude` adds its route.
+Installation adds one owned shim directory to the beginning of the current user's PATH and broadcasts the Windows environment change. When VS Code is safely discovered beside its official CLI launcher, installation adds the bundled CLI Editor extension and records ownership so uninstall removes only an extension CLI Editor added. VS Code profiles maintain separate extension and keybinding registries, so the extension and its bindings must exist in the profile that owns the terminal workspace. A default request fails without changing state when native Codex was not discovered; after installing Codex, `cli-editor repair --adopt-native codex` adds its route.
 
 Before changing PATH, CLI Editor records the exact raw registry value, including its type and expansion text. If PATH is unchanged, uninstall restores that snapshot byte-for-byte. If PATH changed later, uninstall removes only CLI Editor's owned entry and preserves the later edits. A pre-existing shim entry is never claimed or removed. Cleanup is confined to the owned `%LOCALAPPDATA%\CLIEditor` tree and never traverses a reparse-point directory. Self-uninstall removes its running shim from command resolution before completing cleanup and reports any inert Windows-locked residue that must be removed after exit.
 
-## Codex and Claude behavior
+## Codex behavior
 
 The VS Code extension owns only the terminal-level delivery layer. It sends standard xterm modified-key sequences for Ctrl+Home and Ctrl+End so the enhanced Codex composer receives complete-prompt navigation instead of VS Code scrollback commands. Its Ctrl+V handler delegates non-empty text to VS Code's terminal paste command and sends terminal-native Ctrl+V when clipboard text is empty so image paste can reach the CLI. It does not read prompt or transcript content, store clipboard content, or transmit it. User-level keybindings have final precedence, and named profiles keep independent extension and keybinding registries.
 
 Enhanced Codex is selected only by an explicit `codex cli-editor` invocation or an enabled Codex default. A signed cached manifest must support the exact native Codex version. Invalid signatures, rollback sequences, unsupported Codex versions, or expired manifests cannot authorize an enhanced binary. An unlisted VS Code host version produces a visible warning and continues because host drift does not change the pinned Codex binary. A defaulted route otherwise degrades to verified native Codex; an explicit enhanced request fails visibly.
 
-`claude cli-editor` performs signed managed-compatibility validation, then forwards to the user's unchanged native `claude.exe`. The explicit form warns and forwards when the signed validation set is stale or unavailable; users can opt into fail-closed behavior with a strict managed default. Official npm Claude launchers are resolved only through the exact `@anthropic-ai/claude-code` package metadata and its native `bin\claude.exe`; arbitrary `.cmd`, `.bat`, and `.ps1` launchers remain unsupported because safe shell forwarding cannot provide the process-fidelity contract. A safely rejected launcher leaves only that CLI unmanaged and does not block installation for another supported CLI.
-
-A legitimate in-place native update may self-adopt only when the recorded canonical path, package root, expected vendor/package family, and executable shape remain unchanged. Cold native probes have a bounded 60-second budget; after a timeout, identity-validated default Codex and Claude routes warn and forward natively, while explicit enhanced Codex still fails visibly. CLI Editor records completed adoptions with old/new versions and hashes in a bounded journal. Relocation or identity changes require explicit `repair --adopt-native`.
+A legitimate in-place native update may self-adopt only when the recorded canonical path, package root, expected vendor/package family, and executable shape remain unchanged. Cold native probes have a bounded 60-second budget; after a timeout, an identity-validated default Codex route warns and forwards natively, while explicit enhanced Codex still fails visibly. CLI Editor records completed adoptions with old/new versions and hashes in a bounded journal. Relocation or identity changes require explicit `repair --adopt-native codex`.
 
 ## Updates and rollback
 
-`update --bundle` works for Codex-managed, Claude-only, or dual-CLI installations and verifies the detached Ed25519 signature, monotonic manifest sequence, expiry, minimum dispatcher version, and every artifact's declared size and SHA-256. It stages and smoke-tests enhanced Codex with a 60-second cold-artifact budget before acquiring the state lock. Activation retains the active release and two prior signed releases, replaces cache/shims transactionally, and restores prior files if state publication fails. `cli-editor rollback` re-verifies a retained signed release and activates it without lowering the highest observed manifest sequence.
+`update --bundle` verifies the detached Ed25519 signature, monotonic manifest sequence, expiry, minimum dispatcher version, Codex-only compatibility metadata, and every artifact's declared size and SHA-256. It stages and smoke-tests enhanced Codex with a 60-second cold-artifact budget before acquiring the state lock. Activation retains the active release and two prior signed releases, replaces cache/shims transactionally, removes legacy Claude routing state and its old shim, and restores prior files if state publication fails. `cli-editor rollback` re-verifies a retained Codex-only signed release and activates it without lowering the highest observed manifest sequence. Restarting reloads an installed update but does not install source-tree changes.
 
 A dispatcher-changing update must be launched from the new external bundle. This prevents a Windows executable from overwriting itself. Existing sessions retain their already-open executable; locked shims cause update failure and rollback rather than mixed state.
 
@@ -61,7 +57,7 @@ cargo clippy --all-targets -- -D warnings
 cargo test -j 1 --offline
 ```
 
-To pass a literal first argument named `cli-editor` to either native CLI, use `codex -- cli-editor` or `claude -- cli-editor`.
+To pass a literal first argument named `cli-editor` to native Codex, use `codex -- cli-editor`.
 
 The optional `--` immediately after the `cli-editor` control token is a consumed separator. To forward a literal leading delimiter, repeat it, for example `codex cli-editor -- -- help`.
 
@@ -88,4 +84,4 @@ Release dispatches are serialized, and preparation requires the requested manife
 
 ## License and trademarks
 
-CLI Editor source is Apache-2.0. The patched Codex files retain upstream licensing and statements of modification. OpenAI, Codex, Anthropic, Claude, Microsoft, and VS Code are trademarks of their respective owners. Their names identify compatibility only.
+CLI Editor source is Apache-2.0. The patched Codex files retain upstream licensing and statements of modification. OpenAI, Codex, Microsoft, and VS Code are trademarks of their respective owners. Their names identify compatibility only.

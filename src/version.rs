@@ -16,12 +16,8 @@ pub(crate) fn normalized_version(value: &str) -> &str {
 #[cfg(test)]
 mod tests {
     #[test]
-    fn extracts_codex_and_claude_semver_tokens() {
+    fn extracts_codex_semver_tokens() {
         assert_eq!(super::normalized_version("codex-cli 0.148.0"), "0.148.0");
-        assert_eq!(
-            super::normalized_version("2.1.240 (Claude Code)"),
-            "2.1.240"
-        );
         assert_eq!(super::normalized_version("unknown"), "unknown");
     }
 }

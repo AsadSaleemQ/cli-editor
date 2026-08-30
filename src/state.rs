@@ -175,8 +175,10 @@ pub struct RegistryValueSnapshot {
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DefaultSelections {
     pub codex_enhanced: bool,
-    pub claude_managed: bool,
-    pub claude_strict: bool,
+    #[serde(default, rename = "claude_managed", skip_serializing)]
+    pub(crate) legacy_claude_managed: bool,
+    #[serde(default, rename = "claude_strict", skip_serializing)]
+    pub(crate) legacy_claude_strict: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

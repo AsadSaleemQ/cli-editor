@@ -53,4 +53,4 @@ image`. Large text pastes continue through Codex's existing large-paste placehol
 
 ## Scope
 
-The prompt-editing behavior applies to the enhanced Codex CLI, including its pre-session startup draft. The signed Windows bundle includes the CLI Editor VS Code extension, which contributes three terminal keybindings but does not patch VS Code. Named VS Code profiles maintain their own extensions and keybindings, so CLI Editor must be enabled in the profile used by the terminal. The launcher does not patch Claude Code or the npm-installed native Codex package.
+The prompt-editing behavior applies only to the enhanced Codex CLI, including its pre-session startup draft. The signed Windows bundle includes the CLI Editor VS Code extension, which contributes three terminal keybindings but activates its custom behavior only for a matching live enhanced-Codex session. Named VS Code profiles maintain their own extensions and keybindings, so CLI Editor must be enabled in the profile used by the terminal. The launcher does not modify the npm-installed native Codex package or manage any other CLI.

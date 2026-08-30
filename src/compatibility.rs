@@ -28,8 +28,8 @@ pub struct CompatibilityManifest {
 pub struct CompatibilityEntry {
     pub codex: String,
     pub vscode: Vec<String>,
-    #[serde(default)]
-    pub claude: Vec<String>,
+    #[serde(default, rename = "claude", skip_serializing)]
+    pub(crate) legacy_claude: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -129,10 +129,10 @@ impl CompatibilityManifest {
         self.compatibility.iter().any(|entry| entry.codex == codex)
     }
 
-    pub fn supports_claude(&self, claude: &str) -> bool {
+    pub fn is_codex_only(&self) -> bool {
         self.compatibility
             .iter()
-            .any(|entry| entry.claude.iter().any(|version| version == claude))
+            .all(|entry| entry.legacy_claude.is_empty())
     }
 
     pub fn artifact(&self, name: &str) -> Option<&Artifact> {
@@ -183,7 +183,7 @@ fn verify_with_key(
 #[cfg(test)]
 mod tests {
     #[test]
-    fn production_key_verifies_the_committed_release_fixture() {
+    fn production_key_verifies_but_retires_the_legacy_release_fixture() {
         let bytes = include_bytes!("../compatibility/production-manifest-fixture.json");
         let signature = include_str!("../compatibility/production-manifest-fixture.sig");
         let verified = super::verify_manifest_with_key_hex(
@@ -195,6 +195,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(verified.manifest.sequence, 42);
+        assert!(!verified.manifest.is_codex_only());
     }
 
     #[test]

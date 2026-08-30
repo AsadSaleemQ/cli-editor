@@ -11,11 +11,11 @@ pub enum CliEditorError {
     #[error("state file is unsupported: expected schema {expected}, found {found}")]
     UnsupportedStateSchema { expected: u32, found: u32 },
     #[error(
-        "native target was not found for {0:?}; after installing it, run `cli-editor repair --adopt-native <codex|claude>`"
+        "native target was not found for {0:?}; after installing it, run `cli-editor repair --adopt-native codex`"
     )]
     TargetNotFound(crate::CliKind),
     #[error(
-        "native target is missing for {kind:?} at {path}; reinstall the native CLI, then run `cli-editor repair --adopt-native <codex|claude>`, or run `cli-editor uninstall`"
+        "native target is missing for {kind:?} at {path}; reinstall Codex, then run `cli-editor repair --adopt-native codex`, or run `cli-editor uninstall`"
     )]
     NativeTargetMissing { kind: crate::CliKind, path: PathBuf },
     #[error("version probe failed for {0}")]
@@ -25,7 +25,7 @@ pub enum CliEditorError {
     #[error("native target is unsafe or unsupported: {0}")]
     UnsafeTarget(PathBuf),
     #[error(
-        "CLI Editor cannot safely manage launcher {0}; install the official native/npm package or remove/reorder this launcher, then rerun install"
+        "CLI Editor cannot safely manage launcher {0}; install the official Codex package or remove/reorder this launcher, then rerun install"
     )]
     UnsupportedLauncher(PathBuf),
     #[error("argument contains a NUL character")]
@@ -43,7 +43,7 @@ pub enum CliEditorError {
     #[error("enhanced Codex is unavailable or not compatible")]
     EnhancedUnavailable,
     #[error(
-        "recorded target changed and must be revalidated: {0}; run `cli-editor repair --adopt-native codex|claude`"
+        "recorded target changed and must be revalidated: {0}; run `cli-editor repair --adopt-native codex`"
     )]
     TargetChanged(PathBuf),
     #[error("CLI Editor shim recursion was detected")]
@@ -56,12 +56,12 @@ pub enum CliEditorError {
     },
     #[error("the user PATH registry value has an unsupported type or encoding")]
     UnsupportedUserPath,
-    #[error("neither a supported Codex nor Claude native CLI was found")]
+    #[error("a supported native Codex CLI was not found")]
     NoSupportedCliFound,
     #[error("required release artifact is missing: {0}")]
     MissingReleaseArtifact(PathBuf),
-    #[error("Claude version is not validated by a signed compatibility manifest: {0}")]
-    StrictClaudeUnvalidated(String),
+    #[error("release bundle contains retired Claude compatibility metadata")]
+    LegacyClaudeReleaseUnsupported,
     #[error("embedded manifest public key is invalid")]
     InvalidManifestKey,
     #[error("compatibility manifest signature is invalid")]
@@ -88,9 +88,7 @@ pub enum CliEditorError {
     ArtifactNotDeclared(String),
     #[error("release artifact verification failed: {0}")]
     ArtifactVerificationFailed(PathBuf),
-    #[error("--strict and --no-strict apply only to Claude or all defaults")]
-    StrictFlagsNotApplicable,
-    #[error("repair requires --adopt-native codex or --adopt-native claude")]
+    #[error("repair requires --adopt-native codex")]
     RepairTargetRequired,
     #[error("CLI Editor state changed while the operation was being prepared; retry")]
     StateChangedDuringOperation,
@@ -152,8 +150,8 @@ mod tests {
         );
         assert_eq!(
             CliEditorError::NativeTargetMissing {
-                kind: crate::CliKind::Claude,
-                path: PathBuf::from(r"C:\missing\claude.exe"),
+                kind: crate::CliKind::Codex,
+                path: PathBuf::from(r"C:\missing\codex.exe"),
             }
             .exit_code(),
             126

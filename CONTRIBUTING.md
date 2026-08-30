@@ -2,7 +2,7 @@
 
 ## Scope
 
-Changes should preserve native Codex and Claude process fidelity, the signed-manifest boundary, exact PATH rollback, and fail-closed target discovery. Claude Code must remain an unmodified native pass-through.
+Changes should preserve native Codex process fidelity, the signed-manifest boundary, exact PATH rollback, and fail-closed target discovery.
 
 ## Patch workflow
 
@@ -30,4 +30,4 @@ Keep the README focused on the complete product, its supported modes, and the sh
 
 ## Pull requests
 
-Explain the user-visible behavior, security boundary, compatibility impact, rollback behavior, and exact tests run. Changes to the patch, manifest schema, trust key, process forwarding, discovery, installation, update, or uninstall logic require both Codex and Claude Code review before release.
+Explain the user-visible behavior, security boundary, compatibility impact, rollback behavior, and exact tests run. Changes to the patch, manifest schema, trust key, process forwarding, discovery, installation, update, or uninstall logic require independent review before release.

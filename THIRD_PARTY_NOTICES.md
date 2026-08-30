@@ -12,8 +12,4 @@ CLI Editor's changes are represented by `patches/codex/rust-v0.148.0/0001-deskto
 
 Rust dependency names, versions, sources, checksums, and license metadata are fixed by `Cargo.lock` files and generated build metadata. Release automation retains those lockfiles, emits a CycloneDX SBOM, and packages generated full dependency-license reports for both CLI Editor and the modified Codex binaries.
 
-## Claude Code
-
-Claude Code is not included, linked, modified, patched, or redistributed. CLI Editor can launch a user's separately installed native `claude.exe` through its managed pass-through route.
-
 All product and company names identify compatibility only and remain trademarks of their respective owners.

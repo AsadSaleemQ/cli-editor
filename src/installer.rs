@@ -39,17 +39,12 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
     let shim_directory = store.root().join("shims");
     let discovery = DiscoveryOptions::from_environment(shim_directory.clone())?;
     let mut native_targets = BTreeMap::new();
-    for kind in [CliKind::Codex, CliKind::Claude] {
-        match discover_native(kind, &discovery) {
-            Ok(target) => {
-                native_targets.insert(kind, target);
-            }
-            Err(error) => {
-                eprintln!(
-                    "warning: native {} stays unmanaged because discovery failed safely: {error}",
-                    kind.as_str()
-                );
-            }
+    match discover_native(&discovery) {
+        Ok(target) => {
+            native_targets.insert(CliKind::Codex, target);
+        }
+        Err(error) => {
+            eprintln!("warning: native Codex discovery failed safely: {error}");
         }
     }
     if native_targets.is_empty() {
@@ -157,13 +152,8 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
             &installed_dispatcher,
             &shim_directory.join("cli-editor.exe"),
         )?;
-        for (kind, name) in [
-            (CliKind::Codex, "codex.exe"),
-            (CliKind::Claude, "claude.exe"),
-        ] {
-            if native_targets.contains_key(&kind) {
-                atomic_copy(&installed_dispatcher, &shim_directory.join(name))?;
-            }
+        if native_targets.contains_key(&CliKind::Codex) {
+            atomic_copy(&installed_dispatcher, &shim_directory.join("codex.exe"))?;
         }
 
         let path_snapshot = read_user_path()?;
@@ -458,9 +448,6 @@ where
             if state.native_targets.contains_key(&CliKind::Codex) {
                 shim_names.push("codex.exe");
             }
-            if state.native_targets.contains_key(&CliKind::Claude) {
-                shim_names.push("claude.exe");
-            }
             for name in shim_names {
                 backup_and_replace(
                     &final_directory.join("cli-editor.exe"),
@@ -471,6 +458,7 @@ where
             }
         }
 
+        retire_legacy_claude_route(&mut state)?;
         state.installed_version = VERSION.into();
         state.highest_manifest_sequence = verified.manifest.sequence;
         state.manifest_cache = Some(ManifestCacheRecord {
@@ -704,6 +692,7 @@ where
             file_size: candidate.codex_file_size,
             modified_unix_ms: candidate.codex_modified_unix_ms,
         });
+        retire_legacy_claude_route(&mut state)?;
         Ok((state, ()))
     });
     if result.is_err() {
@@ -889,6 +878,9 @@ fn verify_release_bundle(
         .unwrap_or_default()
         .as_secs();
     let verified = verify_manifest(&bytes, &signature, highest_sequence, now)?;
+    if !verified.manifest.is_codex_only() {
+        return Err(CliEditorError::LegacyClaudeReleaseUnsupported);
+    }
     if verified.freshness == Freshness::Expired {
         return Err(CliEditorError::ManifestExpired);
     }
@@ -935,62 +927,22 @@ fn verify_declared_artifact(verified: &VerifiedManifest, name: &str, path: &Path
     Ok(())
 }
 
-pub(crate) fn configure_default(
-    target: crate::cli::DefaultTarget,
-    strict: bool,
-    no_strict: bool,
-) -> Result<()> {
+pub(crate) fn configure_default(target: crate::cli::DefaultTarget) -> Result<()> {
     let store = StateStore::for_current_user()?;
     store.transaction(|current| {
         let mut state = current.ok_or(CliEditorError::NotInstalled)?;
-        apply_default_selection(&mut state, target, strict, no_strict)?;
+        retire_legacy_claude_route(&mut state)?;
+        let _ = target;
+        apply_default_selection(&mut state)?;
         Ok((state, ()))
     })
 }
 
-fn apply_default_selection(
-    state: &mut State,
-    target: crate::cli::DefaultTarget,
-    strict: bool,
-    no_strict: bool,
-) -> Result<()> {
-    if matches!(target, crate::cli::DefaultTarget::Codex) && (strict || no_strict) {
-        return Err(CliEditorError::StrictFlagsNotApplicable);
-    }
-    if matches!(
-        target,
-        crate::cli::DefaultTarget::Codex | crate::cli::DefaultTarget::All
-    ) && !state.native_targets.contains_key(&CliKind::Codex)
-    {
+fn apply_default_selection(state: &mut State) -> Result<()> {
+    if !state.native_targets.contains_key(&CliKind::Codex) {
         return Err(CliEditorError::TargetNotFound(CliKind::Codex));
     }
-    if matches!(
-        target,
-        crate::cli::DefaultTarget::Claude | crate::cli::DefaultTarget::All
-    ) && !state.native_targets.contains_key(&CliKind::Claude)
-    {
-        return Err(CliEditorError::TargetNotFound(CliKind::Claude));
-    }
-    match target {
-        crate::cli::DefaultTarget::Codex => state.defaults.codex_enhanced = true,
-        crate::cli::DefaultTarget::Claude => {
-            state.defaults.claude_managed = true;
-            if strict {
-                state.defaults.claude_strict = true;
-            } else if no_strict {
-                state.defaults.claude_strict = false;
-            }
-        }
-        crate::cli::DefaultTarget::All => {
-            state.defaults.codex_enhanced = true;
-            state.defaults.claude_managed = true;
-            if strict {
-                state.defaults.claude_strict = true;
-            } else if no_strict {
-                state.defaults.claude_strict = false;
-            }
-        }
-    }
+    state.defaults.codex_enhanced = true;
     Ok(())
 }
 
@@ -998,23 +950,15 @@ pub(crate) fn restore_defaults(target: crate::cli::DefaultTarget) -> Result<()> 
     let store = StateStore::for_current_user()?;
     store.transaction(|current| {
         let mut state = current.ok_or(CliEditorError::NotInstalled)?;
-        match target {
-            crate::cli::DefaultTarget::Codex => state.defaults.codex_enhanced = false,
-            crate::cli::DefaultTarget::Claude => {
-                state.defaults.claude_managed = false;
-                state.defaults.claude_strict = false;
-            }
-            crate::cli::DefaultTarget::All => {
-                state.defaults.codex_enhanced = false;
-                state.defaults.claude_managed = false;
-                state.defaults.claude_strict = false;
-            }
-        }
+        retire_legacy_claude_route(&mut state)?;
+        let _ = target;
+        state.defaults.codex_enhanced = false;
         Ok((state, ()))
     })
 }
-pub(crate) fn repair(adopt_native: Option<CliKind>) -> Result<()> {
-    let kind = adopt_native.ok_or(CliEditorError::RepairTargetRequired)?;
+pub(crate) fn repair(adopt_native: Option<crate::cli::DefaultTarget>) -> Result<()> {
+    let _ = adopt_native.ok_or(CliEditorError::RepairTargetRequired)?;
+    let kind = CliKind::Codex;
     let store = StateStore::for_current_user()?;
     let prepared = store.load()?.ok_or(CliEditorError::NotInstalled)?;
     let shim_directory = prepared
@@ -1023,17 +967,15 @@ pub(crate) fn repair(adopt_native: Option<CliKind>) -> Result<()> {
         .ok_or_else(|| CliEditorError::UnsafeTarget(store.root().join("shims")))?;
     let expected = prepared.native_targets.get(&kind).cloned();
     let options = DiscoveryOptions::from_environment(shim_directory.clone())?;
-    let discovered = discover_native(kind, &options)?;
+    let discovered = discover_native(&options)?;
     let installed_dispatcher = shim_directory.join("cli-editor.exe");
-    let shim_name = match kind {
-        CliKind::Codex => "codex.exe",
-        CliKind::Claude => "claude.exe",
-    };
+    let shim_name = "codex.exe";
 
     let was_missing = expected.is_none();
     let shim_target = shim_directory.join(shim_name);
     let result = store.transaction(|current| {
         let mut state = current.ok_or(CliEditorError::NotInstalled)?;
+        retire_legacy_claude_route(&mut state)?;
         if state.native_targets.get(&kind).cloned() != expected {
             return Err(CliEditorError::StateChangedDuringOperation);
         }
@@ -1065,11 +1007,9 @@ pub(crate) fn repair(adopt_native: Option<CliKind>) -> Result<()> {
     }
     Ok(())
 }
-pub(crate) fn adopt_in_place(
-    kind: CliKind,
-    expected: &crate::NativeTarget,
-) -> Result<crate::NativeTarget> {
-    let discovered = refresh_recorded_target(kind, expected)?;
+pub(crate) fn adopt_in_place(expected: &crate::NativeTarget) -> Result<crate::NativeTarget> {
+    let kind = CliKind::Codex;
+    let discovered = refresh_recorded_target(expected)?;
     if discovered.path != expected.path
         || discovered.package_root != expected.package_root
         || !same_package_identity(&expected.package_identity, &discovered.package_identity)
@@ -1080,6 +1020,7 @@ pub(crate) fn adopt_in_place(
     let adopted = discovered.clone();
     store.transaction(|current| {
         let mut state = current.ok_or(CliEditorError::NotInstalled)?;
+        retire_legacy_claude_route(&mut state)?;
         let current_target = state
             .native_targets
             .get(&kind)
@@ -1127,6 +1068,19 @@ fn adopt_discovered_target(
     state.native_targets.insert(kind, discovered);
     state.record_adoption(record);
     true
+}
+
+fn retire_legacy_claude_route(state: &mut State) -> Result<()> {
+    state.native_targets.remove(&CliKind::LegacyClaude);
+    state
+        .adoption_history
+        .retain(|record| record.cli == CliKind::Codex);
+    state.defaults.legacy_claude_managed = false;
+    state.defaults.legacy_claude_strict = false;
+    if let Some(shims) = &state.shim_directory {
+        remove_or_defer(&shims.join("claude.exe"))?;
+    }
+    Ok(())
 }
 
 pub(crate) fn uninstall() -> Result<()> {
@@ -1512,7 +1466,7 @@ mod tests {
     }
 
     #[test]
-    fn claude_only_state_can_accept_dispatcher_updates() {
+    fn state_without_codex_can_accept_dispatcher_updates() {
         let mut state = crate::State::new("0.1.0");
         let manifest = crate::compatibility::CompatibilityManifest {
             schema_version: 1,
@@ -1671,76 +1625,37 @@ mod tests {
     }
 
     #[test]
-    fn default_selection_requires_each_requested_native_cli() {
+    fn default_selection_requires_native_codex() {
         let mut state = crate::State::new("0.1.0");
+        assert!(matches!(
+            super::apply_default_selection(&mut state),
+            Err(crate::CliEditorError::TargetNotFound(crate::CliKind::Codex))
+        ));
+
         state
             .native_targets
             .insert(crate::CliKind::Codex, target("0.148.0", "codex"));
-
-        assert!(matches!(
-            super::apply_default_selection(
-                &mut state,
-                crate::cli::DefaultTarget::Claude,
-                false,
-                false,
-            ),
-            Err(crate::CliEditorError::TargetNotFound(
-                crate::CliKind::Claude
-            ))
-        ));
-        assert!(!state.defaults.claude_managed);
-        assert!(matches!(
-            super::apply_default_selection(&mut state, crate::cli::DefaultTarget::All, true, false,),
-            Err(crate::CliEditorError::TargetNotFound(
-                crate::CliKind::Claude
-            ))
-        ));
-        assert!(!state.defaults.codex_enhanced);
-    }
-
-    #[test]
-    fn default_selection_enables_available_routes_atomically() {
-        let mut state = crate::State::new("0.1.0");
-        state
-            .native_targets
-            .insert(crate::CliKind::Codex, target("0.148.0", "codex"));
-        let mut claude = target("2.1.240", "claude");
-        claude.package_identity = "claude:@anthropic-ai/claude-code@2.1.240".into();
-        claude.version = "2.1.240 (Claude Code)".into();
-        state.native_targets.insert(crate::CliKind::Claude, claude);
-
-        super::apply_default_selection(&mut state, crate::cli::DefaultTarget::All, true, false)
-            .unwrap();
+        super::apply_default_selection(&mut state).unwrap();
         assert!(state.defaults.codex_enhanced);
-        assert!(state.defaults.claude_managed);
-        assert!(state.defaults.claude_strict);
-
-        super::apply_default_selection(&mut state, crate::cli::DefaultTarget::All, false, false)
-            .unwrap();
-        assert!(state.defaults.claude_strict);
-
-        super::apply_default_selection(&mut state, crate::cli::DefaultTarget::All, false, true)
-            .unwrap();
-        assert!(!state.defaults.claude_strict);
     }
 
     #[test]
-    fn strict_flags_are_rejected_for_codex_only_defaults() {
+    fn retiring_legacy_claude_state_removes_route_and_history() {
         let mut state = crate::State::new("0.1.0");
-        state
-            .native_targets
-            .insert(crate::CliKind::Codex, target("0.148.0", "codex"));
-
-        assert!(matches!(
-            super::apply_default_selection(
-                &mut state,
-                crate::cli::DefaultTarget::Codex,
-                true,
-                false,
-            ),
-            Err(crate::CliEditorError::StrictFlagsNotApplicable)
-        ));
-        assert!(!state.defaults.codex_enhanced);
+        state.native_targets.insert(
+            crate::CliKind::LegacyClaude,
+            target("legacy", "legacy-claude"),
+        );
+        state.defaults.legacy_claude_managed = true;
+        state.defaults.legacy_claude_strict = true;
+        super::retire_legacy_claude_route(&mut state).unwrap();
+        assert!(
+            !state
+                .native_targets
+                .contains_key(&crate::CliKind::LegacyClaude)
+        );
+        assert!(!state.defaults.legacy_claude_managed);
+        assert!(!state.defaults.legacy_claude_strict);
     }
     #[test]
     fn adopting_native_target_records_a_bounded_audit_entry() {
@@ -1948,7 +1863,7 @@ mod tests {
             compatibility: vec![CompatibilityEntry {
                 codex: codex_version.clone(),
                 vscode: vec!["test".into()],
-                claude: Vec::new(),
+                legacy_claude: Vec::new(),
             }],
             artifacts,
         };
@@ -2037,7 +1952,7 @@ mod tests {
             compatibility: vec![CompatibilityEntry {
                 codex: "0.148.0".into(),
                 vscode: vec!["test".into()],
-                claude: Vec::new(),
+                legacy_claude: Vec::new(),
             }],
             artifacts: rollback_artifacts,
         };

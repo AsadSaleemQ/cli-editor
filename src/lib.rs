@@ -33,8 +33,8 @@ pub fn run() -> Result<i32> {
         .ok()
         .or_else(|| args.first().map(std::path::PathBuf::from))
         .ok_or(CliEditorError::StateDirectoryUnavailable)?;
-    if let Some(kind) = dispatcher::invocation_kind(&executable) {
-        return dispatcher::run_shim(kind, args.into_iter().skip(1).collect());
+    if dispatcher::invocation_kind(&executable) {
+        return dispatcher::run_shim(args.into_iter().skip(1).collect());
     }
 
     let cli = Cli::parse_from(args);
@@ -43,12 +43,8 @@ pub fn run() -> Result<i32> {
             installer::install(dry_run)?;
             Ok(0)
         }
-        Some(Command::Default {
-            target,
-            strict,
-            no_strict,
-        }) => {
-            installer::configure_default(target, strict, no_strict)?;
+        Some(Command::Default { target }) => {
+            installer::configure_default(target)?;
             Ok(0)
         }
         Some(Command::Restore { target }) => {
@@ -68,7 +64,7 @@ pub fn run() -> Result<i32> {
             installer::update(&bundle)?;
             Ok(0)
         }
-        Some(Command::Run { target, args }) => dispatcher::run_managed(target, args, true),
+        Some(Command::Run { target: _, args }) => dispatcher::run_managed(args, true),
         Some(Command::Repair { adopt_native }) => {
             installer::repair(adopt_native)?;
             Ok(0)

@@ -60,7 +60,7 @@ try {
         issued_unix = $issued
         expires_unix = $expires
         minimum_dispatcher_version = $version
-        compatibility = @([ordered]@{ codex = '0.148.0'; vscode = @('fixture'); claude = @('2.1.251') })
+        compatibility = @([ordered]@{ codex = '0.148.0'; vscode = @('fixture') })
         artifacts = @($artifacts)
     }
     [IO.File]::WriteAllText((Join-Path $bundle 'compatibility-manifest.json'), ($manifest | ConvertTo-Json -Depth 8) + "`n", (New-Object Text.UTF8Encoding($false)))

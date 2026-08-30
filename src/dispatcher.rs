@@ -9,20 +9,16 @@ use crate::process::run_native;
 use crate::state::{NativeTarget, State, StateStore};
 use crate::version::normalized_version;
 
-pub(crate) fn invocation_kind(executable: &Path) -> Option<CliKind> {
-    let stem = executable.file_stem()?.to_str()?;
-    if stem.eq_ignore_ascii_case("codex") {
-        Some(CliKind::Codex)
-    } else if stem.eq_ignore_ascii_case("claude") {
-        Some(CliKind::Claude)
-    } else {
-        None
-    }
+pub(crate) fn invocation_kind(executable: &Path) -> bool {
+    executable
+        .file_stem()
+        .and_then(|stem| stem.to_str())
+        .is_some_and(|stem| stem.eq_ignore_ascii_case("codex"))
 }
 
-pub(crate) fn run_shim(kind: CliKind, args: Vec<OsString>) -> Result<i32> {
+pub(crate) fn run_shim(args: Vec<OsString>) -> Result<i32> {
     let (explicit, args) = parse_shim_args(args);
-    run_managed(kind, args, explicit)
+    run_managed(args, explicit)
 }
 
 fn parse_shim_args(mut args: Vec<OsString>) -> (bool, Vec<OsString>) {
@@ -38,14 +34,14 @@ fn parse_shim_args(mut args: Vec<OsString>) -> (bool, Vec<OsString>) {
     }
     (explicit, args)
 }
-pub(crate) fn run_managed(kind: CliKind, args: Vec<OsString>, explicit: bool) -> Result<i32> {
+pub(crate) fn run_managed(args: Vec<OsString>, explicit: bool) -> Result<i32> {
     let store = StateStore::for_current_user()?;
     let state = store.load()?.ok_or(CliEditorError::NotInstalled)?;
     let (state, native_validated, force_native) =
-        revalidate_native_target(&store, state, kind, explicit)?;
-    let enhanced_allowed = !force_native && compatibility_allows(&state, kind, explicit)?;
-    let target = select_target(&state, kind, explicit, enhanced_allowed)?;
-    let target = resolve_validated_target(&state, kind, target, explicit, native_validated)?;
+        revalidate_native_target(&store, state, explicit)?;
+    let enhanced_allowed = !force_native && compatibility_allows(&state, explicit)?;
+    let target = select_target(&state, explicit, enhanced_allowed)?;
+    let target = resolve_validated_target(&state, target, explicit, native_validated)?;
     reject_shim_target(&state, &target)?;
     run_native(&target, &args)
 }
@@ -53,34 +49,27 @@ pub(crate) fn run_managed(kind: CliKind, args: Vec<OsString>, explicit: bool) ->
 fn revalidate_native_target(
     store: &StateStore,
     state: State,
-    kind: CliKind,
     explicit: bool,
 ) -> Result<(State, bool, bool)> {
-    revalidate_native_target_with(
-        store,
-        state,
-        kind,
-        explicit,
-        crate::installer::adopt_in_place,
-    )
+    revalidate_native_target_with(store, state, explicit, crate::installer::adopt_in_place)
 }
 
 fn revalidate_native_target_with<F>(
     store: &StateStore,
     state: State,
-    kind: CliKind,
     explicit: bool,
     adopt: F,
 ) -> Result<(State, bool, bool)>
 where
-    F: FnOnce(CliKind, &NativeTarget) -> Result<NativeTarget>,
+    F: FnOnce(&NativeTarget) -> Result<NativeTarget>,
 {
+    let kind = CliKind::Codex;
     let Some(recorded) = state.native_targets.get(&kind).cloned() else {
         return Ok((state, false, false));
     };
-    match validate_native_metadata(kind, &recorded) {
+    match validate_native_metadata(&recorded) {
         Ok(()) => Ok((state, true, false)),
-        Err(CliEditorError::TargetChanged(_)) => match adopt(kind, &recorded) {
+        Err(CliEditorError::TargetChanged(_)) => match adopt(&recorded) {
             Ok(_) => Ok((
                 store.load()?.ok_or(CliEditorError::NotInstalled)?,
                 true,
@@ -92,13 +81,13 @@ where
                     .native_targets
                     .get(&kind)
                     .ok_or(CliEditorError::TargetNotFound(kind))?;
-                validate_native_metadata(kind, refreshed_target)?;
+                validate_native_metadata(refreshed_target)?;
                 Ok((refreshed, true, false))
             }
             Err(error @ CliEditorError::VersionProbeTimedOut { .. })
-                if native_timeout_can_fallback(kind, explicit) =>
+                if native_timeout_can_fallback(explicit) =>
             {
-                validate_recorded_target_identity(kind, &recorded)?;
+                validate_recorded_target_identity(&recorded)?;
                 eprintln!(
                     "warning: native {} update version probe timed out; launching the identity-validated native target: {error}",
                     kind.as_str()
@@ -111,8 +100,8 @@ where
     }
 }
 
-fn native_timeout_can_fallback(kind: CliKind, explicit: bool) -> bool {
-    kind == CliKind::Claude || !explicit
+fn native_timeout_can_fallback(explicit: bool) -> bool {
+    !explicit
 }
 
 fn reject_shim_target(state: &State, target: &Path) -> Result<()> {
@@ -132,26 +121,23 @@ fn reject_shim_target(state: &State, target: &Path) -> Result<()> {
     }
     Ok(())
 }
-fn compatibility_allows(state: &State, kind: CliKind, explicit: bool) -> Result<bool> {
+fn compatibility_allows(state: &State, explicit: bool) -> Result<bool> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
     let host_version = std::env::var("TERM_PROGRAM_VERSION").ok();
-    compatibility_allows_at(state, kind, explicit, now, host_version.as_deref())
+    compatibility_allows_at(state, explicit, now, host_version.as_deref())
 }
 
 fn compatibility_allows_at(
     state: &State,
-    kind: CliKind,
     explicit: bool,
     now: u64,
     host_version: Option<&str>,
 ) -> Result<bool> {
-    let codex_requested = kind == CliKind::Codex && (explicit || state.defaults.codex_enhanced);
-    let claude_managed = kind == CliKind::Claude && (explicit || state.defaults.claude_managed);
-    let claude_strict = claude_managed && state.defaults.claude_strict;
-    if !codex_requested && !claude_managed {
+    let codex_requested = explicit || state.defaults.codex_enhanced;
+    if !codex_requested {
         return Ok(false);
     }
     let verified = match cached_manifest_at(state, now) {
@@ -160,21 +146,11 @@ fn compatibility_allows_at(
             eprintln!("warning: enhanced Codex disabled; {error}");
             return Ok(false);
         }
-        Err(error) if claude_managed && !claude_strict => {
-            eprintln!(
-                "warning: managed Claude compatibility check unavailable; launching verified native Claude: {error}"
-            );
-            return Ok(false);
-        }
         Err(error) => return Err(error),
     };
     if verified.freshness == Freshness::Expired {
         if codex_requested && !explicit {
             eprintln!("warning: enhanced Codex manifest expired; launching verified native Codex");
-            return Ok(false);
-        }
-        if claude_managed && !claude_strict {
-            eprintln!("warning: managed Claude manifest expired; launching verified native Claude");
             return Ok(false);
         }
         return Err(CliEditorError::ManifestExpired);
@@ -199,22 +175,6 @@ fn compatibility_allows_at(
                 native_version.into(),
             ));
         }
-    }
-    if claude_managed {
-        let version = state
-            .native_targets
-            .get(&kind)
-            .map(|target| normalized_version(&target.version))
-            .unwrap_or("unknown");
-        if !verified.manifest.supports_claude(version) {
-            if claude_strict {
-                return Err(CliEditorError::StrictClaudeUnvalidated(version.into()));
-            }
-            eprintln!(
-                "warning: Claude {version} is not in the signed compatibility manifest; launching verified native Claude"
-            );
-        }
-        return Ok(false);
     }
     let release = state
         .active_release
@@ -260,14 +220,8 @@ fn cached_manifest_at(state: &State, now: u64) -> Result<VerifiedManifest> {
     Ok(verified)
 }
 
-fn select_target(
-    state: &State,
-    kind: CliKind,
-    explicit: bool,
-    enhanced_allowed: bool,
-) -> Result<PathBuf> {
-    let enhanced =
-        kind == CliKind::Codex && (explicit || state.defaults.codex_enhanced) && enhanced_allowed;
+fn select_target(state: &State, explicit: bool, enhanced_allowed: bool) -> Result<PathBuf> {
+    let enhanced = (explicit || state.defaults.codex_enhanced) && enhanced_allowed;
     if enhanced {
         let release = state
             .active_release
@@ -277,23 +231,25 @@ fn select_target(
     }
     state
         .native_targets
-        .get(&kind)
+        .get(&CliKind::Codex)
         .map(|target| target.path.clone())
-        .ok_or(CliEditorError::TargetNotFound(kind))
+        .ok_or(CliEditorError::TargetNotFound(CliKind::Codex))
 }
 
 fn resolve_validated_target(
     state: &State,
-    kind: CliKind,
     path: PathBuf,
     explicit: bool,
     native_validated: bool,
 ) -> Result<PathBuf> {
-    let native = state.native_targets.get(&kind).map(|target| &target.path);
+    let native = state
+        .native_targets
+        .get(&CliKind::Codex)
+        .map(|target| &target.path);
     if native_validated && native == Some(&path) {
         return Ok(path);
     }
-    match validate_launch_target(state, kind, &path) {
+    match validate_launch_target(state, &path) {
         Ok(()) => Ok(path),
         Err(CliEditorError::ArtifactVerificationFailed(path)) if !explicit => {
             eprintln!(
@@ -302,23 +258,21 @@ fn resolve_validated_target(
             );
             let native = state
                 .native_targets
-                .get(&kind)
+                .get(&CliKind::Codex)
                 .map(|target| target.path.clone())
-                .ok_or(CliEditorError::TargetNotFound(kind))?;
+                .ok_or(CliEditorError::TargetNotFound(CliKind::Codex))?;
             if native_validated {
                 Ok(native)
             } else {
-                validate_launch_target(state, kind, &native)?;
+                validate_launch_target(state, &native)?;
                 Ok(native)
             }
         }
         Err(error) => Err(error),
     }
 }
-fn validate_launch_target(state: &State, kind: CliKind, path: &Path) -> Result<()> {
-    if kind == CliKind::Codex
-        && let Some(release) = state.active_release.as_ref()
-    {
+fn validate_launch_target(state: &State, path: &Path) -> Result<()> {
+    if let Some(release) = state.active_release.as_ref() {
         let enhanced_path = release.directory.join("codex.exe");
         if path == enhanced_path {
             let metadata = path
@@ -341,9 +295,9 @@ fn validate_launch_target(state: &State, kind: CliKind, path: &Path) -> Result<(
     }
     let target = state
         .native_targets
-        .get(&kind)
-        .ok_or(CliEditorError::TargetNotFound(kind))?;
-    validate_native_metadata(kind, target)
+        .get(&CliKind::Codex)
+        .ok_or(CliEditorError::TargetNotFound(CliKind::Codex))?;
+    validate_native_metadata(target)
 }
 
 fn metadata_modified_unix_ms(metadata: &std::fs::Metadata) -> u128 {
@@ -353,11 +307,11 @@ fn metadata_modified_unix_ms(metadata: &std::fs::Metadata) -> u128 {
         .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
         .map_or(0, |value| value.as_millis())
 }
-pub(crate) fn validate_native_metadata(kind: CliKind, target: &NativeTarget) -> Result<()> {
+pub(crate) fn validate_native_metadata(target: &NativeTarget) -> Result<()> {
     let path = target.path.canonicalize().map_err(|source| {
         if source.kind() == std::io::ErrorKind::NotFound {
             CliEditorError::NativeTargetMissing {
-                kind,
+                kind: CliKind::Codex,
                 path: target.path.clone(),
             }
         } else {
@@ -437,15 +391,9 @@ mod tests {
 
     #[test]
     fn detects_shim_name_case_insensitively() {
-        assert_eq!(
-            invocation_kind(Path::new(r"C:\shim\CODEX.exe")),
-            Some(CliKind::Codex)
-        );
-        assert_eq!(
-            invocation_kind(Path::new(r"C:\shim\claude.exe")),
-            Some(CliKind::Claude)
-        );
-        assert_eq!(invocation_kind(Path::new(r"C:\shim\cli-editor.exe")), None);
+        assert!(invocation_kind(Path::new(r"C:\shim\CODEX.exe")));
+        assert!(!invocation_kind(Path::new(r"C:\shim\claude.exe")));
+        assert!(!invocation_kind(Path::new(r"C:\shim\cli-editor.exe")));
     }
 
     #[test]
@@ -468,7 +416,7 @@ mod tests {
     #[test]
     fn explicit_codex_selects_enhanced_release() {
         assert_eq!(
-            select_target(&state(), CliKind::Codex, true, true).unwrap(),
+            select_target(&state(), true, true).unwrap(),
             PathBuf::from(r"C:\release\codex.exe")
         );
     }
@@ -517,20 +465,13 @@ mod tests {
         std::fs::write(&enhanced_path, b"corrupt enhanced").unwrap();
 
         assert_eq!(
-            super::resolve_validated_target(
-                &test_state,
-                CliKind::Codex,
-                enhanced_path.clone(),
-                false,
-                true,
-            )
-            .unwrap(),
+            super::resolve_validated_target(&test_state, enhanced_path.clone(), false, true,)
+                .unwrap(),
             native_path
         );
         assert!(matches!(
             super::resolve_validated_target(
                 &test_state,
-                CliKind::Codex,
                 enhanced_path.clone(),
                 true,
                 true,
@@ -542,17 +483,17 @@ mod tests {
     fn changed_native_target_falls_back_after_probe_timeout_without_reprobing() {
         let directory = crate::test_support::TempDir::new();
         let package_root = directory.path().canonicalize().unwrap();
-        let native_path = package_root.join("claude.exe");
+        let native_path = package_root.join("codex.exe");
         std::fs::write(&native_path, b"updated native").unwrap();
         let metadata = native_path.metadata().unwrap();
         let mut test_state = state();
         test_state.native_targets.insert(
-            CliKind::Claude,
+            CliKind::Codex,
             NativeTarget {
                 path: native_path.clone(),
                 package_root,
-                package_identity: "claude:native-executable".into(),
-                version: "2.1.240 (Claude Code)".into(),
+                package_identity: "codex:native-executable".into(),
+                version: "codex-cli 0.148.0".into(),
                 sha256: "stale".into(),
                 file_size: metadata.len() + 1,
                 modified_unix_ms: 0,
@@ -560,44 +501,39 @@ mod tests {
         );
         let store = crate::state::StateStore::new(directory.path().join("unused-store"));
 
-        let (returned, native_validated, force_native) = super::revalidate_native_target_with(
-            &store,
-            test_state,
-            CliKind::Claude,
-            true,
-            |_, target| {
+        let (returned, native_validated, force_native) =
+            super::revalidate_native_target_with(&store, test_state, false, |target| {
                 Err(crate::CliEditorError::VersionProbeTimedOut {
                     path: target.path.clone(),
                     timeout_seconds: 60,
                 })
-            },
-        )
-        .unwrap();
+            })
+            .unwrap();
 
         assert!(native_validated);
         assert!(force_native);
-        assert_eq!(returned.native_targets[&CliKind::Claude].path, native_path);
+        assert_eq!(returned.native_targets[&CliKind::Codex].path, native_path);
     }
 
     #[test]
     fn missing_native_target_uses_the_actionable_launcher_error() {
         let directory = crate::test_support::TempDir::new();
         let package_root = directory.path().canonicalize().unwrap();
-        let missing = package_root.join("claude.exe");
+        let missing = package_root.join("codex.exe");
         let target = NativeTarget {
             path: missing.clone(),
             package_root,
-            package_identity: "claude:native-executable".into(),
-            version: "2.1.240 (Claude Code)".into(),
+            package_identity: "codex:native-executable".into(),
+            version: "codex-cli 0.148.0".into(),
             sha256: "missing".into(),
             file_size: 0,
             modified_unix_ms: 0,
         };
 
         assert!(matches!(
-            super::validate_native_metadata(CliKind::Claude, &target),
+            super::validate_native_metadata(&target),
             Err(crate::CliEditorError::NativeTargetMissing {
-                kind: CliKind::Claude,
+                kind: CliKind::Codex,
                 path,
             }) if path == missing
         ));
@@ -609,7 +545,7 @@ mod tests {
         let package_root = directory.path().join("native");
         std::fs::create_dir(&package_root).unwrap();
         let package_root = package_root.canonicalize().unwrap();
-        let native_path = package_root.join("claude.exe");
+        let native_path = package_root.join("codex.exe");
         std::fs::write(&native_path, b"updated native").unwrap();
         let metadata = native_path.metadata().unwrap();
         let modified_unix_ms = metadata
@@ -621,8 +557,8 @@ mod tests {
         let adopted = NativeTarget {
             path: native_path.clone(),
             package_root,
-            package_identity: "claude:native-executable".into(),
-            version: "2.1.241 (Claude Code)".into(),
+            package_identity: "codex:native-executable".into(),
+            version: "codex-cli 0.149.0".into(),
             sha256: crate::discovery::sha256_file(&native_path).unwrap(),
             file_size: metadata.len(),
             modified_unix_ms,
@@ -630,7 +566,7 @@ mod tests {
         let mut stale = state();
         stale.active_release = None;
         stale.native_targets.insert(
-            CliKind::Claude,
+            CliKind::Codex,
             NativeTarget {
                 file_size: adopted.file_size + 1,
                 ..adopted.clone()
@@ -639,27 +575,25 @@ mod tests {
         let mut winning = stale.clone();
         winning
             .native_targets
-            .insert(CliKind::Claude, adopted.clone());
+            .insert(CliKind::Codex, adopted.clone());
         let store = crate::state::StateStore::new(directory.path().join("store"));
         store.save(&winning).unwrap();
 
         let (returned, native_validated, force_native) =
-            super::revalidate_native_target_with(&store, stale, CliKind::Claude, true, |_, _| {
+            super::revalidate_native_target_with(&store, stale, true, |_| {
                 Err(crate::CliEditorError::StateChangedDuringOperation)
             })
             .unwrap();
 
         assert!(native_validated);
         assert!(!force_native);
-        assert_eq!(returned.native_targets[&CliKind::Claude], adopted);
+        assert_eq!(returned.native_targets[&CliKind::Codex], adopted);
     }
 
     #[test]
     fn native_probe_timeout_fallback_preserves_explicit_codex_contract() {
-        assert!(super::native_timeout_can_fallback(CliKind::Codex, false));
-        assert!(super::native_timeout_can_fallback(CliKind::Claude, false));
-        assert!(super::native_timeout_can_fallback(CliKind::Claude, true));
-        assert!(!super::native_timeout_can_fallback(CliKind::Codex, true));
+        assert!(super::native_timeout_can_fallback(false));
+        assert!(!super::native_timeout_can_fallback(true));
     }
     fn state_with_manifest(
         compatibility: Vec<CompatibilityEntry>,
@@ -695,23 +629,18 @@ mod tests {
             sequence: 1,
             expires_unix,
         });
-        for (kind, version) in [
-            (CliKind::Codex, "codex-cli 0.148.0"),
-            (CliKind::Claude, "2.1.240 (Claude Code)"),
-        ] {
-            test_state.native_targets.insert(
-                kind,
-                NativeTarget {
-                    path: PathBuf::from(format!(r"C:\native\{}.exe", kind.as_str())),
-                    package_root: PathBuf::from(r"C:\native"),
-                    package_identity: format!("{}:official", kind.as_str()),
-                    version: version.into(),
-                    sha256: "00".repeat(32),
-                    file_size: 1,
-                    modified_unix_ms: 1,
-                },
-            );
-        }
+        test_state.native_targets.insert(
+            CliKind::Codex,
+            NativeTarget {
+                path: PathBuf::from(r"C:\native\codex.exe"),
+                package_root: PathBuf::from(r"C:\native"),
+                package_identity: "codex:official".into(),
+                version: "codex-cli 0.148.0".into(),
+                sha256: "00".repeat(32),
+                file_size: 1,
+                modified_unix_ms: 1,
+            },
+        );
         (directory, test_state)
     }
 
@@ -732,64 +661,15 @@ mod tests {
     }
 
     #[test]
-    fn explicit_claude_warns_and_forwards_when_validation_is_unavailable() {
-        let entry = CompatibilityEntry {
-            codex: "0.148.0".into(),
-            vscode: vec!["1.134.0".into()],
-            claude: vec!["2.1.240".into()],
-        };
-        let (_directory, state) = state_with_manifest(vec![entry], 500);
-        std::fs::write(
-            &state.manifest_cache.as_ref().unwrap().signature_path,
-            "invalid",
-        )
-        .unwrap();
-
-        assert!(!compatibility_allows_at(&state, CliKind::Claude, false, 200, None).unwrap());
-        assert!(!compatibility_allows_at(&state, CliKind::Claude, true, 200, None).unwrap());
-    }
-
-    #[test]
-    fn explicit_claude_warns_and_forwards_an_unlisted_version() {
-        let entry = CompatibilityEntry {
-            codex: "0.148.0".into(),
-            vscode: vec!["1.134.0".into()],
-            claude: vec!["2.0.0".into()],
-        };
-        let (_directory, state) = state_with_manifest(vec![entry], 500);
-
-        assert!(!compatibility_allows_at(&state, CliKind::Claude, true, 200, None).unwrap());
-    }
-
-    #[test]
-    fn strict_claude_rejects_unlisted_version() {
-        let entry = CompatibilityEntry {
-            codex: "0.148.0".into(),
-            vscode: vec!["1.134.0".into()],
-            claude: vec!["2.0.0".into()],
-        };
-        let (_directory, mut state) = state_with_manifest(vec![entry], 500);
-        state.defaults.claude_managed = true;
-        state.defaults.claude_strict = true;
-
-        assert!(matches!(
-            compatibility_allows_at(&state, CliKind::Claude, true, 200, None),
-            Err(crate::CliEditorError::StrictClaudeUnvalidated(_))
-        ));
-    }
-
-    #[test]
     fn vscode_drift_warns_but_does_not_disable_explicit_codex() {
         let entry = CompatibilityEntry {
             codex: "0.148.0".into(),
             vscode: vec!["1.134.0".into()],
-            claude: vec!["2.1.240".into()],
+            legacy_claude: Vec::new(),
         };
         let (_directory, state) = state_with_manifest(vec![entry], 500);
 
-        assert!(
-            compatibility_allows_at(&state, CliKind::Codex, true, 200, Some("1.200.0")).unwrap()
-        );
+        assert!(compatibility_allows_at(&state, true, 200, Some("1.200.0")).unwrap());
     }
 
     #[test]
@@ -797,14 +677,14 @@ mod tests {
         let entry = CompatibilityEntry {
             codex: "0.147.0".into(),
             vscode: vec!["1.134.0".into()],
-            claude: vec!["2.1.240".into()],
+            legacy_claude: Vec::new(),
         };
         let (_directory, mut state) = state_with_manifest(vec![entry], 500);
         state.defaults.codex_enhanced = true;
 
-        assert!(!compatibility_allows_at(&state, CliKind::Codex, false, 200, None).unwrap());
+        assert!(!compatibility_allows_at(&state, false, 200, None).unwrap());
         assert!(matches!(
-            compatibility_allows_at(&state, CliKind::Codex, true, 200, None),
+            compatibility_allows_at(&state, true, 200, None),
             Err(crate::CliEditorError::UnsupportedCodexVersion(_))
         ));
     }
@@ -814,10 +694,10 @@ mod tests {
         let entry = CompatibilityEntry {
             codex: "0.148.0".into(),
             vscode: vec!["1.134.0".into()],
-            claude: vec!["2.1.240".into()],
+            legacy_claude: Vec::new(),
         };
         let (_directory, state) = state_with_manifest(vec![entry], 199);
 
-        assert!(compatibility_allows_at(&state, CliKind::Codex, true, 200, None).unwrap());
+        assert!(compatibility_allows_at(&state, true, 200, None).unwrap());
     }
 }

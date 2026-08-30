@@ -4,7 +4,7 @@
 
 Click to place the cursor, select with the mouse or keyboard, copy and cut, paste text or images, undo and redo, and navigate long drafts like a desktop chat composer.
 
-One repository ships the complete product: an enhanced Codex build, the `cli-editor` launcher, and the `asadsaleemq.cli-editor` VS Code extension. Claude Code is supported as a validated native pass-through and can use terminal-level Smart Paste, but CLI Editor never patches or redistributes Claude Code.
+One repository ships the complete Codex-only product: an enhanced Codex build, the `cli-editor` launcher, and the `asadsaleemq.cli-editor` VS Code extension. CLI Editor does not discover, shim, launch, validate, or intercept Claude Code.
 
 ## Chat-style controls
 
@@ -22,7 +22,7 @@ One repository ships the complete product: an enhanced Codex build, the `cli-edi
 | `Ctrl+Shift+Home` / `Ctrl+Shift+End` | Select to the start / end of the complete prompt. | Enhanced Codex |
 | `Ctrl+C` | Copy selected prompt text; without a selection, preserve interrupt/cancel. | Enhanced Codex |
 | `Ctrl+X` | Cut the selected prompt text. | Enhanced Codex |
-| `Ctrl+V` | Use VS Code text paste when clipboard text is present; otherwise forward `Ctrl+V` so the CLI can handle image/native paste. | VS Code terminal, including Codex and Claude Code |
+| `Ctrl+V` | Use VS Code text paste when clipboard text is present; otherwise forward `Ctrl+V` so Codex can handle image paste. | Enhanced Codex via the extension |
 | `Ctrl+Alt+V` | Force clipboard-image paste. | Enhanced Codex |
 | `Ctrl+Z` | Undo the last prompt edit. | Enhanced Codex |
 | `Ctrl+Shift+Z` | Redo the last undone prompt edit. | Enhanced Codex |
@@ -43,7 +43,6 @@ One repository ships the complete product: an enhanced Codex build, the `cli-edi
 ### Launcher and CLI integration
 
 - Run enhanced Codex explicitly with `codex cli-editor` or make it the default.
-- Run Claude through the unchanged native executable with signed compatibility checks.
 - Forward arguments, console-control events, exit codes, and process cleanup without shell-wrapper ambiguity.
 - Inspect installation health with human-readable or JSON diagnostics.
 - Adopt legitimate in-place native CLI updates while rejecting relocation or identity drift.
@@ -72,26 +71,20 @@ Open a new terminal so it inherits the updated user PATH, then try:
 
 ```powershell
 codex cli-editor
-claude cli-editor
 cli-editor status
 cli-editor doctor
 ```
 
 The source repository intentionally excludes compiled release executables. Cloning the repository is for development, not installation.
 
-## Choose how each CLI launches
+## Choose how Codex launches
 
 | Goal | Command |
 |---|---|
 | One enhanced Codex session | `codex cli-editor` |
-| One validated native Claude session | `claude cli-editor` |
 | Enhanced Codex by default | `cli-editor default codex` |
-| Managed native Claude by default | `cli-editor default claude` |
-| Configure both defaults | `cli-editor default all` |
-| Restore native Codex and Claude | `cli-editor restore all` |
-| Pass `cli-editor` literally to a native CLI | `codex -- cli-editor` or `claude -- cli-editor` |
-
-Claude strictness controls whether an unlisted native Claude version is rejected or launched with a warning; it does not enable an enhanced Claude composer.
+| Restore native Codex | `cli-editor restore codex` |
+| Pass `cli-editor` literally to native Codex | `codex -- cli-editor` |
 
 ## Manage the installation
 
@@ -100,7 +93,7 @@ cli-editor status
 cli-editor doctor [--json]
 cli-editor update --bundle DIRECTORY
 cli-editor rollback [--release RELEASE]
-cli-editor repair --adopt-native codex|claude
+cli-editor repair --adopt-native codex
 cli-editor uninstall
 ```
 
@@ -113,7 +106,6 @@ Updates are explicit and bundle-based; startup never blocks on a network downloa
 | Operating system | Windows 11 x64. macOS and Linux are not currently supported. |
 | Editor | Microsoft VS Code 1.134 and 1.135 validated; the extension manifest accepts VS Code `^1.90.0`. VS Code forks are untested. |
 | Enhanced Codex | Codex CLI 0.148.0 (`rust-v0.148.0`) with an exact signed compatibility match. |
-| Claude Code | Versions 2.1.240 and 2.1.251 validated as unchanged native pass-through; Claude's composer is not patched. |
 | Terminal | VS Code integrated terminal on the validated Windows baseline. |
 | Release toolchain | Rust 1.95.0 with Windows MSVC. |
 
@@ -132,4 +124,4 @@ Release assets are reproducibly built, hash-checked, provenance-attested, and fi
 
 ## Project boundary
 
-CLI Editor is an independent modified build and is not affiliated with or endorsed by OpenAI, Anthropic, or Microsoft. Codex source is used under Apache-2.0. Claude Code is neither modified nor redistributed.
+CLI Editor is an independent modified build and is not affiliated with or endorsed by OpenAI or Microsoft. Codex source is used under Apache-2.0.

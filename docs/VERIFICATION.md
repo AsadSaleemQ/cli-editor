@@ -9,10 +9,9 @@ This document describes the durable validation contract for CLI Editor. Version-
 | Platform | Windows 11 x64 terminals, including the VS Code integrated terminal |
 | Enhanced Codex | Codex CLI 0.148.0, upstream tag `rust-v0.148.0` |
 | VS Code host | 1.134 and 1.135 |
-| Claude Code | Native pass-through for 2.1.240 and 2.1.251 |
 | Release toolchain | Rust 1.95.0 with Windows MSVC |
 
-Enhanced Codex requires an exact signed compatibility match. An explicit unsupported enhanced request fails visibly; a configured default may fall back to the verified native Codex target. Native Claude remains available with a warning unless strict managed validation is enabled.
+Enhanced Codex requires an exact signed compatibility match. An explicit unsupported enhanced request fails visibly; a configured default may fall back to the verified native Codex target. CLI Editor does not discover, shim, launch, validate, or configure another CLI.
 
 ## Continuous validation
 
@@ -55,10 +54,10 @@ A publication candidate is not complete until the exact downloadable bundle pass
 
 - checksum, signed-manifest, artifact-size, and artifact-hash verification;
 - clean per-user installation and healthy `status` / `doctor --json` results;
-- explicit, defaulted, restored, and literal-argument routes for Codex and Claude;
+- explicit, defaulted, restored, and literal-argument routes for Codex;
 - the complete desktop composer input contract, including mouse placement, drag selection, clipboard text and image paste, undo/redo, scrollback handoff, and prompt-boundary navigation;
 - VS Code default-profile and named-profile companion installation;
-- strict and non-strict compatibility behavior for unsupported native versions;
+- fail-closed compatibility behavior for unsupported Codex versions;
 - signed update, retained-release rollback, and failure restoration;
 - byte-exact PATH restoration when unchanged and preservation of later PATH edits;
 - removal of owned state without removing native CLIs or unowned extensions;

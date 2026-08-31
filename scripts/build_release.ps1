@@ -150,7 +150,7 @@ foreach ($name in $files.Keys) {
 }
 $dispatcherVersion = & (Join-Path $bundle 'cli-editor.exe') --version
 if ($LASTEXITCODE -ne 0 -or ($dispatcherVersion -join ' ') -notmatch [regex]::Escape($Version)) {
-    throw "CLI Editor smoke test did not report $Version"
+    throw "Codex CLI Editor smoke test did not report $Version"
 }
 $reported = & (Join-Path $bundle 'codex-enhanced.exe') --version
 if ($LASTEXITCODE -ne 0 -or ($reported -join ' ') -notmatch [regex]::Escape($CodexVersion)) {

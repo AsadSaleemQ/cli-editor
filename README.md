@@ -1,10 +1,12 @@
-# CLI Editor
+# Codex CLI Editor
 
 **Turn Codex CLI terminals into chat-style editors with smart clipboard paste and familiar shortcuts.**
 
 Click to place the cursor, select with the mouse or keyboard, copy and cut, paste text or images, undo and redo, and navigate long drafts like a desktop chat composer.
 
-One repository ships the complete Codex-only product: an enhanced Codex build, the `cli-editor` launcher, and the `asadsaleemq.cli-editor` VS Code extension. CLI Editor does not discover, shim, launch, validate, or intercept Claude Code.
+One repository ships the complete Codex-only product: an enhanced Codex build, the `cli-editor` launcher, and the `asadsaleemq.cli-editor` VS Code extension. Codex CLI Editor supports Codex CLI exclusively and does not manage any other command-line assistant.
+
+**Codex CLI Editor** is the final public product name. The executable name `cli-editor`, extension identifier `asadsaleemq.cli-editor`, repository slug `AsadSaleemQ/cli-editor`, command IDs, and `%LOCALAPPDATA%\CLIEditor` directory remain stable machine identifiers so installed copies continue to update safely.
 
 ## Chat-style controls
 
@@ -65,7 +67,7 @@ Download the latest Windows x64 ZIP and adjacent `.sha256` file from [GitHub Rel
 .\cli-editor.exe install
 ```
 
-CLI Editor installs its per-user launcher and, when VS Code is available, the bundled **CLI Editor** extension. Reload VS Code after installation. Named VS Code profiles must enable the extension in the profile used by the terminal.
+Codex CLI Editor installs its per-user launcher and, when VS Code is available, the bundled **Codex CLI Editor** extension. Reload VS Code after installation. Named VS Code profiles must enable the extension in the profile used by the terminal.
 
 Open a new terminal so it inherits the updated user PATH, then try:
 
@@ -124,4 +126,4 @@ Release assets are reproducibly built, hash-checked, provenance-attested, and fi
 
 ## Project boundary
 
-CLI Editor is an independent modified build and is not affiliated with or endorsed by OpenAI or Microsoft. Codex source is used under Apache-2.0.
+Codex CLI Editor is an independent modified build and is not affiliated with or endorsed by OpenAI or Microsoft. Codex source is used under Apache-2.0.

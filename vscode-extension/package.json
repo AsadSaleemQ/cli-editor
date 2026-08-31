@@ -1,8 +1,8 @@
 {
   "name": "cli-editor",
-  "displayName": "CLI Editor",
-  "description": "Turn enhanced Codex CLI terminals into chat-style editors while preserving native behavior everywhere else.",
-  "version": "0.3.2",
+  "displayName": "Codex CLI Editor",
+  "description": "Codex CLI Editor turns enhanced Codex terminals into chat-style editors while preserving native behavior everywhere else.",
+  "version": "0.3.3",
   "publisher": "asadsaleemq",
   "license": "Apache-2.0",
   "repository": {
@@ -27,9 +27,9 @@
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      { "command": "cliEditor.promptHome", "title": "CLI Editor: Codex Prompt Start" },
-      { "command": "cliEditor.promptEnd", "title": "CLI Editor: Codex Prompt End" },
-      { "command": "cliEditor.smartPaste", "title": "CLI Editor: Codex Smart Paste" }
+      { "command": "cliEditor.promptHome", "title": "Codex CLI Editor: Prompt Start" },
+      { "command": "cliEditor.promptEnd", "title": "Codex CLI Editor: Prompt End" },
+      { "command": "cliEditor.smartPaste", "title": "Codex CLI Editor: Smart Paste" }
     ],
     "keybindings": [
       { "command": "cliEditor.promptHome", "key": "ctrl+home", "when": "terminalFocus" },

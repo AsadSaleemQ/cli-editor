@@ -437,7 +437,6 @@ impl CliKind {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Codex => "codex",
-            Self::LegacyClaude => "claude",
         }
     }
 }

@@ -32,7 +32,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         && is_installed_cli_editor_shim(&existing, &current_executable)
     {
         println!(
-            "CLI Editor is already installed; run the extracted release copy to revalidate or update the installation."
+            "Codex CLI Editor is already installed; run the extracted release copy to revalidate or update the installation."
         );
         return Ok(());
     }
@@ -89,7 +89,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         .join(release_directory_name(verified.manifest.sequence));
 
     if dry_run {
-        println!("CLI Editor install dry run");
+        println!("Codex CLI Editor install dry run");
         println!("  state: {}", store.root().display());
         println!("  shims: {}", shim_directory.display());
         println!("  release: {}", version_directory.display());
@@ -102,7 +102,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
     let vscode_extension = crate::vscode::install(&vscode_extension_source)?;
     if vscode_extension == crate::vscode::InstallOutcome::Unavailable {
         eprintln!(
-            "warning: VS Code was not discovered; the CLI Editor extension was not installed"
+            "warning: VS Code was not discovered; the Codex CLI Editor extension was not installed"
         );
     }
     let vscode_extension_added = vscode_extension == crate::vscode::InstallOutcome::Added;
@@ -204,7 +204,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         }
     }
     if result? {
-        println!("CLI Editor installed successfully.");
+        println!("Codex CLI Editor installed successfully.");
         if vscode_extension != crate::vscode::InstallOutcome::Unavailable {
             println!("  reload VS Code once to activate chat-style terminal editing");
         }
@@ -214,12 +214,12 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         );
     } else if newer_bundle_available(verified.manifest.sequence, existing_manifest_sequence.get()) {
         println!(
-            "CLI Editor verified a newer release bundle but did not activate it; run `cli-editor update --bundle \"{}\"`.",
+            "Codex CLI Editor verified a newer release bundle but did not activate it; run `cli-editor update --bundle \"{}\"`.",
             source_directory.display()
         );
     } else {
         println!(
-            "CLI Editor is already installed; existing state was revalidated and republished."
+            "Codex CLI Editor is already installed; existing state was revalidated and republished."
         );
     }
     Ok(())
@@ -458,7 +458,6 @@ where
             }
         }
 
-        retire_legacy_claude_route(&mut state)?;
         state.installed_version = VERSION.into();
         state.highest_manifest_sequence = verified.manifest.sequence;
         state.manifest_cache = Some(ManifestCacheRecord {
@@ -496,7 +495,7 @@ where
     result?;
     prune_retained_releases(&versions_directory, &final_directory);
     println!(
-        "CLI Editor activated manifest sequence {} from {}",
+        "Codex CLI Editor activated manifest sequence {} from {}",
         verified.manifest.sequence,
         bundle.directory().display()
     );
@@ -692,7 +691,6 @@ where
             file_size: candidate.codex_file_size,
             modified_unix_ms: candidate.codex_modified_unix_ms,
         });
-        retire_legacy_claude_route(&mut state)?;
         Ok((state, ()))
     });
     if result.is_err() {
@@ -701,7 +699,7 @@ where
     let _ = std::fs::remove_dir_all(&rollback_directory);
     result?;
     println!(
-        "CLI Editor rolled back enhanced Codex to {} (signed manifest sequence {}); update sequence protection remains at {}",
+        "Codex CLI Editor rolled back enhanced Codex to {} (signed manifest sequence {}); update sequence protection remains at {}",
         candidate.release_name, candidate.manifest_sequence, expected_highest
     );
     Ok(())
@@ -878,14 +876,11 @@ fn verify_release_bundle(
         .unwrap_or_default()
         .as_secs();
     let verified = verify_manifest(&bytes, &signature, highest_sequence, now)?;
-    if !verified.manifest.is_codex_only() {
-        return Err(CliEditorError::LegacyClaudeReleaseUnsupported);
-    }
     if verified.freshness == Freshness::Expired {
         return Err(CliEditorError::ManifestExpired);
     }
     if matches!(verified.freshness, Freshness::Grace { .. }) {
-        eprintln!("warning: CLI Editor compatibility manifest is stale but within grace");
+        eprintln!("warning: Codex CLI Editor compatibility manifest is stale but within grace");
     }
     let required = semver::Version::parse(&verified.manifest.minimum_dispatcher_version)
         .map_err(|_| CliEditorError::InvalidManifestWindow)?;
@@ -931,7 +926,6 @@ pub(crate) fn configure_default(target: crate::cli::DefaultTarget) -> Result<()>
     let store = StateStore::for_current_user()?;
     store.transaction(|current| {
         let mut state = current.ok_or(CliEditorError::NotInstalled)?;
-        retire_legacy_claude_route(&mut state)?;
         let _ = target;
         apply_default_selection(&mut state)?;
         Ok((state, ()))
@@ -950,7 +944,6 @@ pub(crate) fn restore_defaults(target: crate::cli::DefaultTarget) -> Result<()> 
     let store = StateStore::for_current_user()?;
     store.transaction(|current| {
         let mut state = current.ok_or(CliEditorError::NotInstalled)?;
-        retire_legacy_claude_route(&mut state)?;
         let _ = target;
         state.defaults.codex_enhanced = false;
         Ok((state, ()))
@@ -975,7 +968,6 @@ pub(crate) fn repair(adopt_native: Option<crate::cli::DefaultTarget>) -> Result<
     let shim_target = shim_directory.join(shim_name);
     let result = store.transaction(|current| {
         let mut state = current.ok_or(CliEditorError::NotInstalled)?;
-        retire_legacy_claude_route(&mut state)?;
         if state.native_targets.get(&kind).cloned() != expected {
             return Err(CliEditorError::StateChangedDuringOperation);
         }
@@ -991,17 +983,17 @@ pub(crate) fn repair(adopt_native: Option<crate::cli::DefaultTarget>) -> Result<
     let changed = result?;
     if was_missing {
         println!(
-            "CLI Editor added and adopted the native {} target",
+            "Codex CLI Editor added and adopted the native {} target",
             kind.as_str()
         );
     } else if changed {
         println!(
-            "CLI Editor adopted the revalidated native {} target",
+            "Codex CLI Editor adopted the revalidated native {} target",
             kind.as_str()
         );
     } else {
         println!(
-            "CLI Editor native {} target is already current",
+            "Codex CLI Editor native {} target is already current",
             kind.as_str()
         );
     }
@@ -1020,7 +1012,6 @@ pub(crate) fn adopt_in_place(expected: &crate::NativeTarget) -> Result<crate::Na
     let adopted = discovered.clone();
     store.transaction(|current| {
         let mut state = current.ok_or(CliEditorError::NotInstalled)?;
-        retire_legacy_claude_route(&mut state)?;
         let current_target = state
             .native_targets
             .get(&kind)
@@ -1034,7 +1025,7 @@ pub(crate) fn adopt_in_place(expected: &crate::NativeTarget) -> Result<crate::Na
         Ok((state, ()))
     })?;
     eprintln!(
-        "notice: CLI Editor adopted an in-place {} update: {} -> {}",
+        "notice: Codex CLI Editor adopted an in-place {} update: {} -> {}",
         kind.as_str(),
         expected.version,
         adopted.version
@@ -1070,26 +1061,13 @@ fn adopt_discovered_target(
     true
 }
 
-fn retire_legacy_claude_route(state: &mut State) -> Result<()> {
-    state.native_targets.remove(&CliKind::LegacyClaude);
-    state
-        .adoption_history
-        .retain(|record| record.cli == CliKind::Codex);
-    state.defaults.legacy_claude_managed = false;
-    state.defaults.legacy_claude_strict = false;
-    if let Some(shims) = &state.shim_directory {
-        remove_or_defer(&shims.join("claude.exe"))?;
-    }
-    Ok(())
-}
-
 pub(crate) fn uninstall() -> Result<()> {
     let store = StateStore::for_current_user()?;
     let root = store.root().to_path_buf();
     store.remove_with(|state| {
         if let Err(error) = crate::vscode::uninstall_if_owned(state.vscode_extension_added) {
             eprintln!(
-                "warning: {error}; core CLI Editor cleanup will continue, but the VS Code extension may need manual removal"
+                "warning: {error}; core Codex CLI Editor cleanup will continue, but the VS Code extension may need manual removal"
             );
         }
         if state.path_entry_added
@@ -1102,7 +1080,7 @@ pub(crate) fn uninstall() -> Result<()> {
             && let Some(shims) = &state.shim_directory
         {
             eprintln!(
-                "notice: preserving pre-existing user PATH entry for {}; CLI Editor did not add or own that setting",
+                "notice: preserving pre-existing user PATH entry for {}; Codex CLI Editor did not add or own that setting",
                 shims.display()
             );
         }
@@ -1121,14 +1099,14 @@ fn remove_owned_shims(shims: &Path) {
 
 fn remove_owned_shims_with(shims: &Path, mut remove: impl FnMut(&Path) -> Result<()>) {
     let mut deferred = false;
-    for name in ["cli-editor.exe", "codex.exe", "claude.exe"] {
+    for name in ["cli-editor.exe", "codex.exe"] {
         if remove(&shims.join(name)).is_err() {
             deferred = true;
         }
     }
     if deferred {
         eprintln!(
-            "warning: CLI Editor state removal is continuing; any final shim residue will be reported after cleanup"
+            "warning: Codex CLI Editor state removal is continuing; any final shim residue will be reported after cleanup"
         );
     }
 }
@@ -1175,7 +1153,7 @@ fn cleanup_owned_root_at(root: &Path, expected: &Path) -> Result<()> {
     let mut pending = Vec::new();
     if let Err(error) = collect_owned_entries(root, &mut directories, &mut pending) {
         eprintln!(
-            "warning: CLI Editor state was removed but owned residue could not be enumerated: {error}"
+            "warning: Codex CLI Editor state was removed but owned residue could not be enumerated: {error}"
         );
         return Ok(());
     }
@@ -1215,20 +1193,20 @@ fn report_owned_residue(root: &Path) {
     let mut files = Vec::new();
     if collect_owned_entries(root, &mut directories, &mut files).is_err() {
         eprintln!(
-            "warning: CLI Editor state was removed but final residue could not be enumerated under {}",
+            "warning: Codex CLI Editor state was removed but final residue could not be enumerated under {}",
             root.display()
         );
         return;
     }
     if files.is_empty() {
         eprintln!(
-            "warning: CLI Editor state was removed but an owned directory remains at {}",
+            "warning: Codex CLI Editor state was removed but an owned directory remains at {}",
             root.display()
         );
     }
     for path in files {
         eprintln!(
-            "warning: CLI Editor state was removed; delete final inert residue after this command exits: {}",
+            "warning: Codex CLI Editor state was removed; delete final inert residue after this command exits: {}",
             path.display()
         );
     }
@@ -1530,7 +1508,7 @@ mod tests {
 
         assert_eq!(
             attempted,
-            ["cli-editor.exe", "codex.exe", "claude.exe"].map(|name| shims.join(name))
+            ["cli-editor.exe", "codex.exe"].map(|name| shims.join(name))
         );
     }
 
@@ -1639,24 +1617,6 @@ mod tests {
         assert!(state.defaults.codex_enhanced);
     }
 
-    #[test]
-    fn retiring_legacy_claude_state_removes_route_and_history() {
-        let mut state = crate::State::new("0.1.0");
-        state.native_targets.insert(
-            crate::CliKind::LegacyClaude,
-            target("legacy", "legacy-claude"),
-        );
-        state.defaults.legacy_claude_managed = true;
-        state.defaults.legacy_claude_strict = true;
-        super::retire_legacy_claude_route(&mut state).unwrap();
-        assert!(
-            !state
-                .native_targets
-                .contains_key(&crate::CliKind::LegacyClaude)
-        );
-        assert!(!state.defaults.legacy_claude_managed);
-        assert!(!state.defaults.legacy_claude_strict);
-    }
     #[test]
     fn adopting_native_target_records_a_bounded_audit_entry() {
         let mut state = crate::State::new("0.1.0");
@@ -1863,7 +1823,6 @@ mod tests {
             compatibility: vec![CompatibilityEntry {
                 codex: codex_version.clone(),
                 vscode: vec!["test".into()],
-                legacy_claude: Vec::new(),
             }],
             artifacts,
         };
@@ -1901,14 +1860,6 @@ mod tests {
         assert_eq!(active_release.sha256, declared_enhanced.sha256);
         assert_eq!(active_release.file_size, declared_enhanced.size);
         assert!(old_release.is_dir());
-        assert!(
-            !updated
-                .shim_directory
-                .as_ref()
-                .unwrap()
-                .join("claude.exe")
-                .exists()
-        );
         assert_eq!(
             std::fs::read(
                 updated
@@ -1952,7 +1903,6 @@ mod tests {
             compatibility: vec![CompatibilityEntry {
                 codex: "0.148.0".into(),
                 vscode: vec!["test".into()],
-                legacy_claude: Vec::new(),
             }],
             artifacts: rollback_artifacts,
         };

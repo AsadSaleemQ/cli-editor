@@ -1,8 +1,8 @@
-# CLI Editor
+# Codex CLI Editor
 
-Turn Codex CLI terminals into chat-style editors with smart clipboard paste and familiar shortcuts.
+Codex CLI Editor turns Codex terminals into chat-style editors with smart clipboard paste and familiar shortcuts.
 
-CLI Editor combines the VS Code extension in this package with an enhanced Codex CLI build from the [CLI Editor GitHub repository](https://github.com/AsadSaleemQ/cli-editor). The extension activates its prompt shortcuts and Smart Paste behavior only for a matching live enhanced-Codex session. Every other terminal keeps normal VS Code behavior.
+Codex CLI Editor combines the VS Code extension in this package with an enhanced Codex CLI build from the [Codex CLI Editor GitHub repository](https://github.com/AsadSaleemQ/cli-editor). The extension activates its prompt shortcuts and Smart Paste behavior only for a matching live enhanced-Codex session. Every other terminal keeps normal VS Code behavior.
 
 ## Keyboard shortcuts
 
@@ -48,7 +48,7 @@ CLI Editor combines the VS Code extension in this package with an enhanced Codex
 
 | Layer | Supported or validated baseline |
 |---|---|
-| Operating system | Windows 11 x64 validated. The complete CLI Editor product is not currently supported on macOS or Linux. |
+| Operating system | Windows 11 x64 validated. The complete Codex CLI Editor product is not currently supported on macOS or Linux. |
 | Editor | Microsoft VS Code 1.134 and 1.135 validated; the manifest accepts VS Code `^1.90.0`. VS Code forks are untested. |
 | Enhanced Codex | Codex CLI 0.148.0 (`rust-v0.148.0`) with an exact signed compatibility match. This provides the full chat-style composer. |
 | Terminal | VS Code integrated terminal on the validated Windows baseline. Other terminal hosts do not load this extension. |

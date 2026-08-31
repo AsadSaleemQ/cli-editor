@@ -9,8 +9,6 @@ use serde::Serialize;
 #[serde(rename_all = "lowercase")]
 pub enum CliKind {
     Codex,
-    #[serde(rename = "claude")]
-    LegacyClaude,
 }
 
 #[derive(Debug, Parser)]
@@ -32,7 +30,7 @@ impl Cli {
 
 #[derive(Debug, Subcommand)]
 pub(crate) enum Command {
-    /// Install the Codex-only CLI Editor launcher.
+    /// Install the Codex-only Codex CLI Editor launcher.
     Install {
         #[arg(long)]
         dry_run: bool,
@@ -69,7 +67,7 @@ pub(crate) enum Command {
         #[arg(long, value_name = "RELEASE")]
         release: Option<String>,
     },
-    /// Remove CLI Editor and restore native Codex routing.
+    /// Remove Codex CLI Editor and restore native Codex routing.
     Uninstall,
     /// Run enhanced Codex explicitly.
     Run {

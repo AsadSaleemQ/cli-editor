@@ -42,7 +42,6 @@ try {
     }
     $internalArtifactPatterns = @(
         '^CASE_STUDY\.md$',
-        '^CLAUDE_.*REVIEW.*\.md$',
         '^CODEX_.*RECONCILIATION.*\.md$',
         '^PATCH_REVIEW\.md$',
         '^(?:PLAN|REVIEW_HANDOFF|SESSION_HANDOFF)\.md$',

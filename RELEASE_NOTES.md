@@ -1,22 +1,29 @@
-# Unreleased
+# Codex CLI Editor v0.1.4
 
-## CLI Editor v0.1.3
+Codex CLI Editor is the final product identity for the enhanced Codex launcher, signed runtime, and VS Code extension.
 
-- Removed non-Codex discovery, shimming, routing, defaults, diagnostics, and release compatibility.
-- Upgrades retire legacy Claude routing state and its old shim while leaving the separately installed native CLI untouched.
+## Product
+
+- Applies **Codex CLI Editor** consistently across the CLI, VS Code user interface, release titles, documentation, licensing reports, diagnostics, and security statements.
+- Supports Codex CLI exclusively. Discovery, shimming, routing, compatibility manifests, diagnostics, and updates are all Codex-specific.
+- Keeps the stable `cli-editor` executable, `asadsaleemq.cli-editor` extension ID, `cliEditor.*` command IDs, and `AsadSaleemQ/cli-editor` repository slug for safe upgrades.
+
+## Extension 0.3.3
+
+- Presents **Codex CLI Editor** in the Extensions view and Command Palette.
+- Restricts prompt navigation and Smart Paste to matching live enhanced-Codex sessions.
+- Keeps `terminalSmartPaste.paste` as a hidden compatibility alias while `cliEditor.smartPaste` remains canonical.
+- Performs no startup polling, telemetry, or network activity.
+
+## Codex CLI Editor v0.1.3
+
+- Shipped Codex-only discovery, routing, signed compatibility, status, doctor, update, rollback, repair, and uninstall behavior.
+- Bundled the enhanced Codex runtime and VS Code extension as one reversible Windows product.
 - Restricted VS Code prompt navigation and Smart Paste to matching live enhanced-Codex sessions.
-- Bumped the bundled CLI Editor extension to 0.3.2 with Codex-only commands, metadata, and documentation.
 
-## CLI Editor extension
+# Codex CLI Editor v0.1.2
 
-- Standardized the product, extension, VSIX, package, folder, and GitHub identity on **CLI Editor** (`asadsaleemq.cli-editor`, `cli-editor.vsix`, and `AsadSaleemQ/cli-editor`).
-- Consolidated Terminal Smart Paste into CLI Editor so chat-style prompt editing, smart text/image paste, and familiar shortcuts ship from one extension and one repository.
-- Preserved the former `terminalSmartPaste.paste` command as a compatibility alias while making `cliEditor.smartPaste` the canonical command.
-- Added manifest/runtime contract coverage and explicit extension activation, background behavior, and compatibility documentation.
-
-# CLI Editor v0.1.2
-
-Windows x64 patch release of CLI Editor.
+Windows x64 patch release of Codex CLI Editor.
 
 ## Corrected
 
@@ -27,7 +34,7 @@ Windows x64 patch release of CLI Editor.
 
 - Desktop-style Codex composer: touchpad/wheel scrolling, click placement, drag selection, Ctrl+A/C/X/V, Ctrl+Home/End prompt navigation, Shift selection variants, image paste, undo/redo, and a visible mouse cursor.
 - Native Codex pass-through with direct `CreateProcessW` launch, console-control forwarding, Job Object cleanup, and exact exit-code propagation.
-- Opt-in enhanced invocation plus persistent defaults, status/doctor, signed updates, compatibility fallback, explicit native adoption, and exact PATH rollback on uninstall when CLI Editor owned the unchanged setting, while preserving later edits.
+- Opt-in enhanced invocation plus persistent defaults, status/doctor, signed updates, compatibility fallback, explicit native adoption, and exact PATH rollback on uninstall when Codex CLI Editor owned the unchanged setting, while preserving later edits.
 
 ## Compatibility
 
@@ -37,4 +44,4 @@ Validated baseline: Windows 11 x64, VS Code 1.134.0 and 1.135.0, and Codex CLI 0
 
 Verify the `.zip` against the adjacent `.sha256` file. The bundle also contains the exact Ed25519-signed compatibility manifest used by the dispatcher.
 
-CLI Editor is an independent modified build and is not affiliated with or endorsed by OpenAI or Microsoft.
+Codex CLI Editor is an independent modified build and is not affiliated with or endorsed by OpenAI or Microsoft.

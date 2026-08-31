@@ -156,7 +156,7 @@ fn compatibility_allows_at(
         return Err(CliEditorError::ManifestExpired);
     }
     if matches!(verified.freshness, Freshness::Grace { .. }) {
-        eprintln!("warning: CLI Editor compatibility manifest is stale but within grace");
+        eprintln!("warning: Codex CLI Editor compatibility manifest is stale but within grace");
     }
     if codex_requested {
         let native_version = state
@@ -392,7 +392,7 @@ mod tests {
     #[test]
     fn detects_shim_name_case_insensitively() {
         assert!(invocation_kind(Path::new(r"C:\shim\CODEX.exe")));
-        assert!(!invocation_kind(Path::new(r"C:\shim\claude.exe")));
+        assert!(!invocation_kind(Path::new(r"C:\shim\other.exe")));
         assert!(!invocation_kind(Path::new(r"C:\shim\cli-editor.exe")));
     }
 
@@ -665,7 +665,6 @@ mod tests {
         let entry = CompatibilityEntry {
             codex: "0.148.0".into(),
             vscode: vec!["1.134.0".into()],
-            legacy_claude: Vec::new(),
         };
         let (_directory, state) = state_with_manifest(vec![entry], 500);
 
@@ -677,7 +676,6 @@ mod tests {
         let entry = CompatibilityEntry {
             codex: "0.147.0".into(),
             vscode: vec!["1.134.0".into()],
-            legacy_claude: Vec::new(),
         };
         let (_directory, mut state) = state_with_manifest(vec![entry], 500);
         state.defaults.codex_enhanced = true;
@@ -694,7 +692,6 @@ mod tests {
         let entry = CompatibilityEntry {
             codex: "0.148.0".into(),
             vscode: vec!["1.134.0".into()],
-            legacy_claude: Vec::new(),
         };
         let (_directory, state) = state_with_manifest(vec![entry], 199);
 

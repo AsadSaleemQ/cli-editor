@@ -24,10 +24,10 @@ struct Check {
 pub(crate) fn status() -> Result<()> {
     let store = StateStore::for_current_user()?;
     let Some(state) = store.load()? else {
-        println!("CLI Editor is not installed.");
+        println!("Codex CLI Editor is not installed.");
         return Ok(());
     };
-    println!("CLI Editor {}", state.installed_version);
+    println!("Codex CLI Editor {}", state.installed_version);
     println!(
         "  Codex default: {}",
         if state.defaults.codex_enhanced {
@@ -84,7 +84,7 @@ pub(crate) fn doctor(json: bool) -> Result<i32> {
             checks: vec![Check {
                 name: "installation".into(),
                 ok: false,
-                detail: "CLI Editor is not installed".into(),
+                detail: "Codex CLI Editor is not installed".into(),
             }],
             adoption_history: Vec::new(),
         };
@@ -103,7 +103,7 @@ pub(crate) fn doctor(json: bool) -> Result<i32> {
                 ),
                 Err(error) => (false, error.to_string()),
             },
-            None => (true, "not installed at CLI Editor setup time".into()),
+            None => (true, "not installed at Codex CLI Editor setup time".into()),
         };
         checks.push(Check {
             name: format!("{} native target", kind.as_str()),
@@ -216,7 +216,7 @@ fn print_report(report: &DoctorReport, json: bool) -> Result<()> {
         println!("{}", serde_json::to_string_pretty(report)?);
     } else {
         println!(
-            "CLI Editor doctor: {}",
+            "Codex CLI Editor doctor: {}",
             if report.healthy {
                 "healthy"
             } else {

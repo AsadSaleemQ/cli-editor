@@ -25,7 +25,7 @@
 | `Ctrl+Shift+Z` | Redo the last undone composer edit. `Ctrl+Y` remains the upstream yank binding. |
 
 Navigation and selections inside the editable prompt belong to the Codex composer rather than VS Code's rendered
-terminal buffer. The bundled CLI Editor extension sends `Ctrl+Home` and `Ctrl+End` to the active terminal application instead of allowing VS Code to consume them as terminal-history commands. Typing and deletion can replace a mouse-dragged prompt selection.
+terminal buffer. The bundled Codex CLI Editor extension sends `Ctrl+Home` and `Ctrl+End` to the active terminal application instead of allowing VS Code to consume them as terminal-history commands. Typing and deletion can replace a mouse-dragged prompt selection.
 Terminal mouse capture is enabled while composer interaction is needed and restored on exit.
 
 When a wheel or two-finger touchpad gesture begins in the normal chat view, Codex releases mouse
@@ -53,4 +53,4 @@ image`. Large text pastes continue through Codex's existing large-paste placehol
 
 ## Scope
 
-The prompt-editing behavior applies only to the enhanced Codex CLI, including its pre-session startup draft. The signed Windows bundle includes the CLI Editor VS Code extension, which contributes three terminal keybindings but activates its custom behavior only for a matching live enhanced-Codex session. Named VS Code profiles maintain their own extensions and keybindings, so CLI Editor must be enabled in the profile used by the terminal. The launcher does not modify the npm-installed native Codex package or manage any other CLI.
+The prompt-editing behavior applies only to the enhanced Codex CLI, including its pre-session startup draft. The signed Windows bundle includes the Codex CLI Editor VS Code extension, which contributes three terminal keybindings but activates its custom behavior only for a matching live enhanced-Codex session. Named VS Code profiles maintain their own extensions and keybindings, so Codex CLI Editor must be enabled in the profile used by the terminal. The launcher does not modify the npm-installed native Codex package or manage any other CLI.

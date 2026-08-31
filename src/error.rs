@@ -4,9 +4,9 @@ pub type Result<T> = std::result::Result<T, CliEditorError>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum CliEditorError {
-    #[error("CLI Editor state directory is unavailable")]
+    #[error("Codex CLI Editor state directory is unavailable")]
     StateDirectoryUnavailable,
-    #[error("another CLI Editor operation is in progress")]
+    #[error("another Codex CLI Editor operation is in progress")]
     LockTimeout,
     #[error("state file is unsupported: expected schema {expected}, found {found}")]
     UnsupportedStateSchema { expected: u32, found: u32 },
@@ -25,7 +25,7 @@ pub enum CliEditorError {
     #[error("native target is unsafe or unsupported: {0}")]
     UnsafeTarget(PathBuf),
     #[error(
-        "CLI Editor cannot safely manage launcher {0}; install the official Codex package or remove/reorder this launcher, then rerun install"
+        "Codex CLI Editor cannot safely manage launcher {0}; install the official Codex package or remove/reorder this launcher, then rerun install"
     )]
     UnsupportedLauncher(PathBuf),
     #[error("argument contains a NUL character")]
@@ -38,7 +38,7 @@ pub enum CliEditorError {
         #[source]
         source: std::io::Error,
     },
-    #[error("CLI Editor is not installed")]
+    #[error("Codex CLI Editor is not installed")]
     NotInstalled,
     #[error("enhanced Codex is unavailable or not compatible")]
     EnhancedUnavailable,
@@ -46,7 +46,7 @@ pub enum CliEditorError {
         "recorded target changed and must be revalidated: {0}; run `cli-editor repair --adopt-native codex`"
     )]
     TargetChanged(PathBuf),
-    #[error("CLI Editor shim recursion was detected")]
+    #[error("Codex CLI Editor shim recursion was detected")]
     RecursionDetected,
     #[error("Windows registry API {api} failed: {source}")]
     RegistryApi {
@@ -60,8 +60,6 @@ pub enum CliEditorError {
     NoSupportedCliFound,
     #[error("required release artifact is missing: {0}")]
     MissingReleaseArtifact(PathBuf),
-    #[error("release bundle contains retired Claude compatibility metadata")]
-    LegacyClaudeReleaseUnsupported,
     #[error("embedded manifest public key is invalid")]
     InvalidManifestKey,
     #[error("compatibility manifest signature is invalid")]
@@ -90,7 +88,7 @@ pub enum CliEditorError {
     ArtifactVerificationFailed(PathBuf),
     #[error("repair requires --adopt-native codex")]
     RepairTargetRequired,
-    #[error("CLI Editor state changed while the operation was being prepared; retry")]
+    #[error("Codex CLI Editor state changed while the operation was being prepared; retry")]
     StateChangedDuringOperation,
     #[error("the release bundle does not advance the accepted manifest sequence")]
     NoUpdateAvailable,

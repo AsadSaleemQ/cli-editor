@@ -1,6 +1,6 @@
 # Verification
 
-This document describes the durable validation contract for CLI Editor. Version-specific fixes and release changes belong in [RELEASE_NOTES.md](../RELEASE_NOTES.md), while CI run details remain in GitHub Actions rather than accumulating here.
+This document describes the durable validation contract for Codex CLI Editor. Version-specific fixes and release changes belong in [RELEASE_NOTES.md](../RELEASE_NOTES.md), while CI run details remain in GitHub Actions rather than accumulating here.
 
 ## Supported baseline
 
@@ -11,7 +11,7 @@ This document describes the durable validation contract for CLI Editor. Version-
 | VS Code host | 1.134 and 1.135 |
 | Release toolchain | Rust 1.95.0 with Windows MSVC |
 
-Enhanced Codex requires an exact signed compatibility match. An explicit unsupported enhanced request fails visibly; a configured default may fall back to the verified native Codex target. CLI Editor does not discover, shim, launch, validate, or configure another CLI.
+Enhanced Codex requires an exact signed compatibility match. An explicit unsupported enhanced request fails visibly; a configured default may fall back to the verified native Codex target. Codex CLI Editor does not discover, shim, launch, validate, or configure another CLI.
 
 ## Continuous validation
 

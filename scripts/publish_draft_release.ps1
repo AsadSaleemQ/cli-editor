@@ -87,7 +87,7 @@ try {
         $matches[0].FullName
     }
     $releaseNotes = Join-Path $root 'RELEASE_NOTES.md'
-    Invoke-Checked 'gh' (@('release', 'create', $tag) + $assets + @('--repo', $Repository, '--target', $head, '--title', "CLI Editor v$version", '--notes-file', $releaseNotes, '--draft')) 'Unable to publish the signed draft release' | Out-Null
+    Invoke-Checked 'gh' (@('release', 'create', $tag) + $assets + @('--repo', $Repository, '--target', $head, '--title', "Codex CLI Editor v$version", '--notes-file', $releaseNotes, '--draft')) 'Unable to publish the signed draft release' | Out-Null
     Write-Output "Published signed draft release $tag from $($run.url)"
 } finally {
     Remove-Item Env:\CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX -ErrorAction SilentlyContinue

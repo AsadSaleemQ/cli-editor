@@ -28,8 +28,6 @@ pub struct CompatibilityManifest {
 pub struct CompatibilityEntry {
     pub codex: String,
     pub vscode: Vec<String>,
-    #[serde(default, rename = "claude", skip_serializing)]
-    pub(crate) legacy_claude: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -127,12 +125,6 @@ pub fn release_key_is_development() -> bool {
 impl CompatibilityManifest {
     pub fn supports_codex(&self, codex: &str) -> bool {
         self.compatibility.iter().any(|entry| entry.codex == codex)
-    }
-
-    pub fn is_codex_only(&self) -> bool {
-        self.compatibility
-            .iter()
-            .all(|entry| entry.legacy_claude.is_empty())
     }
 
     pub fn artifact(&self, name: &str) -> Option<&Artifact> {

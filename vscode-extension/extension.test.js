@@ -15,8 +15,8 @@ function fakeIo(records) {
 
 (async () => {
   assert.match(manifest.description, /enhanced Codex/);
-  assert.doesNotMatch(manifest.description, /Claude/i);
-  assert.ok(!manifest.keywords.includes('claude'));
+  assert.ok(manifest.displayName.startsWith('Codex'));
+  assert.deepStrictEqual(manifest.keywords.includes('codex'), true);
 
   const records = {
     '20.json': { mtime: 2, json: JSON.stringify({ schema_version: 1, pid: 20, console_pids: [10, 20], prompt_active: true }) },

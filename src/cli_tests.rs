@@ -5,13 +5,13 @@ use super::Cli;
 use super::Command;
 
 #[test]
-fn accepts_codex_and_rejects_claude_targets() {
+fn accepts_codex_and_rejects_unknown_targets() {
     let cli = Cli::try_parse_from(["cli-editor", "default", "codex"])
         .expect("Codex default should parse");
     assert!(matches!(cli.command, Some(Command::Default { .. })));
 
-    let error = Cli::try_parse_from(["cli-editor", "default", "claude"])
-        .expect_err("Claude must not be a supported target");
+    let error = Cli::try_parse_from(["cli-editor", "default", "other"])
+        .expect_err("unknown targets must not be supported");
     assert_eq!(error.kind(), clap::error::ErrorKind::InvalidValue);
 }
 #[test]
@@ -38,7 +38,7 @@ fn version_identifies_the_unofficial_distribution() {
 #[test]
 fn help_describes_only_codex_routes() {
     let help = Cli::command().render_long_help().to_string();
-    assert!(help.contains("Codex-only CLI Editor launcher"));
+    assert!(help.contains("Codex-only Codex CLI Editor launcher"));
     assert!(help.contains("signed Codex-only release bundle"));
-    assert!(!help.contains("Claude"));
+    assert!(!help.contains("other CLI"));
 }

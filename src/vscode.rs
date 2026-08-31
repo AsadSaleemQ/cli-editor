@@ -50,7 +50,7 @@ pub(crate) fn update_if_owned(vsix: &Path, owned: bool) -> Result<()> {
     }
     let code = discover_code_executable().ok_or_else(|| {
         CliEditorError::VscodeBridge(
-            "VS Code was removed or moved; its owned CLI Editor extension could not be updated"
+            "VS Code was removed or moved; its owned Codex CLI Editor extension could not be updated"
                 .into(),
         )
     })?;
@@ -71,7 +71,8 @@ pub(crate) fn uninstall_if_owned(owned: bool) -> Result<()> {
     }
     let code = discover_code_executable().ok_or_else(|| {
         CliEditorError::VscodeBridge(
-            "VS Code was removed or moved; uninstall its CLI Editor extension manually".into(),
+            "VS Code was removed or moved; uninstall its Codex CLI Editor extension manually"
+                .into(),
         )
     })?;
     let listed = run_code(&code, &["--list-extensions", "--show-versions"])?;

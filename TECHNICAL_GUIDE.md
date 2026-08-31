@@ -1,4 +1,4 @@
-# CLI Editor technical guide
+# Codex CLI Editor technical guide
 
 ## What ships
 
@@ -9,7 +9,7 @@ A release bundle contains:
 - `cli-editor.exe`: installer, dispatcher, compatibility guard, updater, doctor, and uninstaller.
 - `codex-enhanced.exe`: the pinned Codex build with the desktop composer patch.
 - `codex-code-mode-host.exe`: the matching upstream code-mode helper.
-- `cli-editor.vsix`: the CLI Editor extension, which connects VS Code terminal input to the chat-style composer and provides smart text/image paste and prompt-navigation bindings.
+- `cli-editor.vsix`: the Codex CLI Editor extension, which connects VS Code terminal input to the chat-style composer and provides smart text/image paste and prompt-navigation bindings.
 - `compatibility-manifest.json` and `.sig`: Ed25519-signed artifact and compatibility metadata.
 - `THIRD_PARTY_LICENSES_CLI_EDITOR.html` and `THIRD_PARTY_LICENSES_CODEX.html`: generated dependency license texts for the two Rust binary sets.
 
@@ -29,9 +29,9 @@ cli-editor run codex -- ARGS...
 codex cli-editor [-- CODEX_ARGS...]
 ```
 
-Installation adds one owned shim directory to the beginning of the current user's PATH and broadcasts the Windows environment change. When VS Code is safely discovered beside its official CLI launcher, installation adds the bundled CLI Editor extension and records ownership so uninstall removes only an extension CLI Editor added. VS Code profiles maintain separate extension and keybinding registries, so the extension and its bindings must exist in the profile that owns the terminal workspace. A default request fails without changing state when native Codex was not discovered; after installing Codex, `cli-editor repair --adopt-native codex` adds its route.
+Installation adds one owned shim directory to the beginning of the current user's PATH and broadcasts the Windows environment change. When VS Code is safely discovered beside its official CLI launcher, installation adds the bundled Codex CLI Editor extension and records ownership so uninstall removes only an extension Codex CLI Editor added. VS Code profiles maintain separate extension and keybinding registries, so the extension and its bindings must exist in the profile that owns the terminal workspace. A default request fails without changing state when native Codex was not discovered; after installing Codex, `cli-editor repair --adopt-native codex` adds its route.
 
-Before changing PATH, CLI Editor records the exact raw registry value, including its type and expansion text. If PATH is unchanged, uninstall restores that snapshot byte-for-byte. If PATH changed later, uninstall removes only CLI Editor's owned entry and preserves the later edits. A pre-existing shim entry is never claimed or removed. Cleanup is confined to the owned `%LOCALAPPDATA%\CLIEditor` tree and never traverses a reparse-point directory. Self-uninstall removes its running shim from command resolution before completing cleanup and reports any inert Windows-locked residue that must be removed after exit.
+Before changing PATH, Codex CLI Editor records the exact raw registry value, including its type and expansion text. If PATH is unchanged, uninstall restores that snapshot byte-for-byte. If PATH changed later, uninstall removes only Codex CLI Editor's owned entry and preserves the later edits. A pre-existing shim entry is never claimed or removed. Cleanup is confined to the owned `%LOCALAPPDATA%\CLIEditor` tree and never traverses a reparse-point directory. Self-uninstall removes its running shim from command resolution before completing cleanup and reports any inert Windows-locked residue that must be removed after exit.
 
 ## Codex behavior
 
@@ -39,11 +39,11 @@ The VS Code extension owns only the terminal-level delivery layer. It sends stan
 
 Enhanced Codex is selected only by an explicit `codex cli-editor` invocation or an enabled Codex default. A signed cached manifest must support the exact native Codex version. Invalid signatures, rollback sequences, unsupported Codex versions, or expired manifests cannot authorize an enhanced binary. An unlisted VS Code host version produces a visible warning and continues because host drift does not change the pinned Codex binary. A defaulted route otherwise degrades to verified native Codex; an explicit enhanced request fails visibly.
 
-A legitimate in-place native update may self-adopt only when the recorded canonical path, package root, expected vendor/package family, and executable shape remain unchanged. Cold native probes have a bounded 60-second budget; after a timeout, an identity-validated default Codex route warns and forwards natively, while explicit enhanced Codex still fails visibly. CLI Editor records completed adoptions with old/new versions and hashes in a bounded journal. Relocation or identity changes require explicit `repair --adopt-native codex`.
+A legitimate in-place native update may self-adopt only when the recorded canonical path, package root, expected vendor/package family, and executable shape remain unchanged. Cold native probes have a bounded 60-second budget; after a timeout, an identity-validated default Codex route warns and forwards natively, while explicit enhanced Codex still fails visibly. Codex CLI Editor records completed adoptions with old/new versions and hashes in a bounded journal. Relocation or identity changes require explicit `repair --adopt-native codex`.
 
 ## Updates and rollback
 
-`update --bundle` verifies the detached Ed25519 signature, monotonic manifest sequence, expiry, minimum dispatcher version, Codex-only compatibility metadata, and every artifact's declared size and SHA-256. It stages and smoke-tests enhanced Codex with a 60-second cold-artifact budget before acquiring the state lock. Activation retains the active release and two prior signed releases, replaces cache/shims transactionally, removes legacy Claude routing state and its old shim, and restores prior files if state publication fails. `cli-editor rollback` re-verifies a retained Codex-only signed release and activates it without lowering the highest observed manifest sequence. Restarting reloads an installed update but does not install source-tree changes.
+`update --bundle` verifies the detached Ed25519 signature, monotonic manifest sequence, expiry, minimum dispatcher version, Codex-only compatibility metadata, and every artifact's declared size and SHA-256. It stages and smoke-tests enhanced Codex with a 60-second cold-artifact budget before acquiring the state lock. Activation retains the active release and two prior signed releases, replaces cache/shims transactionally, and restores prior files if state publication fails. `cli-editor rollback` re-verifies a retained Codex-only signed release and activates it without lowering the highest observed manifest sequence. Restarting reloads an installed update but does not install source-tree changes.
 
 A dispatcher-changing update must be launched from the new external bundle. This prevents a Windows executable from overwriting itself. Existing sessions retain their already-open executable; locked shims cause update failure and rollback rather than mixed state.
 
@@ -84,4 +84,4 @@ Release dispatches are serialized, and preparation requires the requested manife
 
 ## License and trademarks
 
-CLI Editor source is Apache-2.0. The patched Codex files retain upstream licensing and statements of modification. OpenAI, Codex, Microsoft, and VS Code are trademarks of their respective owners. Their names identify compatibility only.
+Codex CLI Editor source is Apache-2.0. The patched Codex files retain upstream licensing and statements of modification. OpenAI, Codex, Microsoft, and VS Code are trademarks of their respective owners. Their names identify compatibility only.

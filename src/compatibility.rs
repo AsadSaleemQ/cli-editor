@@ -175,7 +175,7 @@ fn verify_with_key(
 #[cfg(test)]
 mod tests {
     #[test]
-    fn production_key_verifies_but_retires_the_legacy_release_fixture() {
+    fn production_key_verifies_the_codex_release_fixture() {
         let bytes = include_bytes!("../compatibility/production-manifest-fixture.json");
         let signature = include_str!("../compatibility/production-manifest-fixture.sig");
         let verified = super::verify_manifest_with_key_hex(
@@ -187,7 +187,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(verified.manifest.sequence, 42);
-        assert!(!verified.manifest.is_codex_only());
+        assert!(verified.manifest.supports_codex("0.148.0"));
     }
 
     #[test]

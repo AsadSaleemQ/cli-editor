@@ -6,7 +6,7 @@ Only the newest published Codex CLI Editor release is supported. Compatibility w
 
 ## Report a vulnerability
 
-Do not open a public issue for a suspected vulnerability. Use GitHub's private vulnerability reporting for `AsadSaleemQ/cli-editor`. Include the affected version, reproduction steps, expected impact, and whether the issue requires an attacker already running code as the same Windows user.
+Do not open a public issue for a suspected vulnerability. Use GitHub's private vulnerability reporting for `AsadSaleemQ/codex-cli-editor`. Include the affected version, reproduction steps, expected impact, and whether the issue requires an attacker already running code as the same Windows user.
 
 ## Trust model
 
@@ -20,4 +20,4 @@ The Ed25519 public key is embedded in the dispatcher. Release manifests are veri
 
 ## Update behavior
 
-Startup never performs a blocking network download. Users explicitly download a release bundle and run `cli-editor update --bundle DIRECTORY`. Signature, sequence, expiry, size, hash, smoke-test, lock, or state-publication failure leaves the prior active release in place.
+Startup never performs a blocking network download. Users explicitly download a release bundle and run `codex-cli-editor update --bundle DIRECTORY`. Signature, sequence, expiry, size, hash, smoke-test, lock, or state-publication failure leaves the prior active release in place.

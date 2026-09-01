@@ -41,7 +41,7 @@ async function activeCodexState(vscode) {
   if (!terminal) return { terminal: undefined, matched: false, active: false };
   const terminalPid = await terminal.processId;
   const localAppData = process.env.LOCALAPPDATA;
-  const directory = localAppData && path.join(localAppData, 'CLIEditor', 'vscode-bridge');
+  const directory = localAppData && path.join(localAppData, 'CodexCLIEditor', 'vscode-bridge');
   const state = directory
     ? readCodexState(directory, terminalPid)
     : { matched: false, active: false };
@@ -79,13 +79,11 @@ async function smartPaste(vscode) {
 
 function activate(context, vscode = require('vscode')) {
   context.subscriptions.push(
-    vscode.commands.registerCommand('cliEditor.promptHome', () =>
+    vscode.commands.registerCommand('codexCliEditor.promptHome', () =>
       route(vscode, '\u001b[1;5H', 'workbench.action.terminal.scrollToTop')),
-    vscode.commands.registerCommand('cliEditor.promptEnd', () =>
+    vscode.commands.registerCommand('codexCliEditor.promptEnd', () =>
       route(vscode, '\u001b[1;5F', 'workbench.action.terminal.scrollToBottom')),
-    vscode.commands.registerCommand('cliEditor.smartPaste', () =>
-      smartPaste(vscode)),
-    vscode.commands.registerCommand('terminalSmartPaste.paste', () =>
+    vscode.commands.registerCommand('codexCliEditor.smartPaste', () =>
       smartPaste(vscode))
   );
 }

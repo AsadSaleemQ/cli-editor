@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::CliKind;
 use crate::compatibility::{Freshness, VerifiedManifest, verify_manifest};
 use crate::discovery::{sha256_file, validate_recorded_target_identity};
-use crate::error::{CliEditorError, Result};
+use crate::error::{CodexCliEditorError, Result};
 use crate::process::run_native;
 use crate::state::{NativeTarget, State, StateStore};
 use crate::version::normalized_version;
@@ -25,7 +25,7 @@ fn parse_shim_args(mut args: Vec<OsString>) -> (bool, Vec<OsString>) {
     let explicit = args
         .first()
         .and_then(|value| value.to_str())
-        .is_some_and(|value| value.eq_ignore_ascii_case("cli-editor"));
+        .is_some_and(|value| value.eq_ignore_ascii_case("codex-cli-editor"));
     if explicit {
         args.remove(0);
         if args.first().is_some_and(|value| value == "--") {
@@ -36,7 +36,7 @@ fn parse_shim_args(mut args: Vec<OsString>) -> (bool, Vec<OsString>) {
 }
 pub(crate) fn run_managed(args: Vec<OsString>, explicit: bool) -> Result<i32> {
     let store = StateStore::for_current_user()?;
-    let state = store.load()?.ok_or(CliEditorError::NotInstalled)?;
+    let state = store.load()?.ok_or(CodexCliEditorError::NotInstalled)?;
     let (state, native_validated, force_native) =
         revalidate_native_target(&store, state, explicit)?;
     let enhanced_allowed = !force_native && compatibility_allows(&state, explicit)?;
@@ -69,22 +69,22 @@ where
     };
     match validate_native_metadata(&recorded) {
         Ok(()) => Ok((state, true, false)),
-        Err(CliEditorError::TargetChanged(_)) => match adopt(&recorded) {
+        Err(CodexCliEditorError::TargetChanged(_)) => match adopt(&recorded) {
             Ok(_) => Ok((
-                store.load()?.ok_or(CliEditorError::NotInstalled)?,
+                store.load()?.ok_or(CodexCliEditorError::NotInstalled)?,
                 true,
                 false,
             )),
-            Err(CliEditorError::StateChangedDuringOperation) => {
-                let refreshed = store.load()?.ok_or(CliEditorError::NotInstalled)?;
+            Err(CodexCliEditorError::StateChangedDuringOperation) => {
+                let refreshed = store.load()?.ok_or(CodexCliEditorError::NotInstalled)?;
                 let refreshed_target = refreshed
                     .native_targets
                     .get(&kind)
-                    .ok_or(CliEditorError::TargetNotFound(kind))?;
+                    .ok_or(CodexCliEditorError::TargetNotFound(kind))?;
                 validate_native_metadata(refreshed_target)?;
                 Ok((refreshed, true, false))
             }
-            Err(error @ CliEditorError::VersionProbeTimedOut { .. })
+            Err(error @ CodexCliEditorError::VersionProbeTimedOut { .. })
                 if native_timeout_can_fallback(explicit) =>
             {
                 validate_recorded_target_identity(&recorded)?;
@@ -107,17 +107,17 @@ fn native_timeout_can_fallback(explicit: bool) -> bool {
 fn reject_shim_target(state: &State, target: &Path) -> Result<()> {
     let canonical_target = target
         .canonicalize()
-        .map_err(|source| CliEditorError::io(target, source))?;
+        .map_err(|source| CodexCliEditorError::io(target, source))?;
     if let Some(shim_directory) = &state.shim_directory
         && let Ok(canonical_shims) = shim_directory.canonicalize()
         && canonical_target.starts_with(canonical_shims)
     {
-        return Err(CliEditorError::RecursionDetected);
+        return Err(CodexCliEditorError::RecursionDetected);
     }
     if let Ok(current) = std::env::current_exe().and_then(|path| path.canonicalize())
         && canonical_target == current
     {
-        return Err(CliEditorError::RecursionDetected);
+        return Err(CodexCliEditorError::RecursionDetected);
     }
     Ok(())
 }
@@ -153,7 +153,7 @@ fn compatibility_allows_at(
             eprintln!("warning: enhanced Codex manifest expired; launching verified native Codex");
             return Ok(false);
         }
-        return Err(CliEditorError::ManifestExpired);
+        return Err(CodexCliEditorError::ManifestExpired);
     }
     if matches!(verified.freshness, Freshness::Grace { .. }) {
         eprintln!("warning: Codex CLI Editor compatibility manifest is stale but within grace");
@@ -163,7 +163,7 @@ fn compatibility_allows_at(
             .native_targets
             .get(&CliKind::Codex)
             .map(|target| normalized_version(&target.version))
-            .ok_or(CliEditorError::TargetNotFound(CliKind::Codex))?;
+            .ok_or(CodexCliEditorError::TargetNotFound(CliKind::Codex))?;
         if !verified.manifest.supports_codex(native_version) {
             if !explicit {
                 eprintln!(
@@ -171,7 +171,7 @@ fn compatibility_allows_at(
                 );
                 return Ok(false);
             }
-            return Err(CliEditorError::UnsupportedCodexVersion(
+            return Err(CodexCliEditorError::UnsupportedCodexVersion(
                 native_version.into(),
             ));
         }
@@ -179,10 +179,10 @@ fn compatibility_allows_at(
     let release = state
         .active_release
         .as_ref()
-        .ok_or(CliEditorError::EnhancedUnavailable)?;
+        .ok_or(CodexCliEditorError::EnhancedUnavailable)?;
     if !verified.manifest.supports_codex(&release.codex_version) {
         if explicit {
-            return Err(CliEditorError::UnsupportedCodexVersion(
+            return Err(CodexCliEditorError::UnsupportedCodexVersion(
                 release.codex_version.clone(),
             ));
         }
@@ -205,17 +205,17 @@ fn cached_manifest_at(state: &State, now: u64) -> Result<VerifiedManifest> {
     let cache = state
         .manifest_cache
         .as_ref()
-        .ok_or(CliEditorError::EnhancedUnavailable)?;
+        .ok_or(CodexCliEditorError::EnhancedUnavailable)?;
     let bytes = std::fs::read(&cache.manifest_path)
-        .map_err(|source| CliEditorError::io(&cache.manifest_path, source))?;
+        .map_err(|source| CodexCliEditorError::io(&cache.manifest_path, source))?;
     let signature = std::fs::read_to_string(&cache.signature_path)
-        .map_err(|source| CliEditorError::io(&cache.signature_path, source))?;
+        .map_err(|source| CodexCliEditorError::io(&cache.signature_path, source))?;
     if cache.sequence > state.highest_manifest_sequence {
-        return Err(CliEditorError::ManifestCacheMismatch);
+        return Err(CodexCliEditorError::ManifestCacheMismatch);
     }
     let verified = verify_manifest(&bytes, &signature, cache.sequence, now)?;
     if verified.manifest.sequence != cache.sequence {
-        return Err(CliEditorError::ManifestCacheMismatch);
+        return Err(CodexCliEditorError::ManifestCacheMismatch);
     }
     Ok(verified)
 }
@@ -226,14 +226,14 @@ fn select_target(state: &State, explicit: bool, enhanced_allowed: bool) -> Resul
         let release = state
             .active_release
             .as_ref()
-            .ok_or(CliEditorError::EnhancedUnavailable)?;
+            .ok_or(CodexCliEditorError::EnhancedUnavailable)?;
         return Ok(release.directory.join("codex.exe"));
     }
     state
         .native_targets
         .get(&CliKind::Codex)
         .map(|target| target.path.clone())
-        .ok_or(CliEditorError::TargetNotFound(CliKind::Codex))
+        .ok_or(CodexCliEditorError::TargetNotFound(CliKind::Codex))
 }
 
 fn resolve_validated_target(
@@ -251,7 +251,7 @@ fn resolve_validated_target(
     }
     match validate_launch_target(state, &path) {
         Ok(()) => Ok(path),
-        Err(CliEditorError::ArtifactVerificationFailed(path)) if !explicit => {
+        Err(CodexCliEditorError::ArtifactVerificationFailed(path)) if !explicit => {
             eprintln!(
                 "warning: enhanced Codex failed integrity validation at {}; launching verified native Codex",
                 path.display()
@@ -260,7 +260,7 @@ fn resolve_validated_target(
                 .native_targets
                 .get(&CliKind::Codex)
                 .map(|target| target.path.clone())
-                .ok_or(CliEditorError::TargetNotFound(CliKind::Codex))?;
+                .ok_or(CodexCliEditorError::TargetNotFound(CliKind::Codex))?;
             if native_validated {
                 Ok(native)
             } else {
@@ -277,7 +277,7 @@ fn validate_launch_target(state: &State, path: &Path) -> Result<()> {
         if path == enhanced_path {
             let metadata = path
                 .metadata()
-                .map_err(|_| CliEditorError::ArtifactVerificationFailed(path.to_path_buf()))?;
+                .map_err(|_| CodexCliEditorError::ArtifactVerificationFailed(path.to_path_buf()))?;
             let modified = metadata_modified_unix_ms(&metadata);
             if release.file_size != 0
                 && metadata.len() == release.file_size
@@ -288,7 +288,7 @@ fn validate_launch_target(state: &State, path: &Path) -> Result<()> {
             if sha256_file(path).ok().as_deref() == Some(&release.sha256) {
                 return Ok(());
             }
-            return Err(CliEditorError::ArtifactVerificationFailed(
+            return Err(CodexCliEditorError::ArtifactVerificationFailed(
                 path.to_path_buf(),
             ));
         }
@@ -296,7 +296,7 @@ fn validate_launch_target(state: &State, path: &Path) -> Result<()> {
     let target = state
         .native_targets
         .get(&CliKind::Codex)
-        .ok_or(CliEditorError::TargetNotFound(CliKind::Codex))?;
+        .ok_or(CodexCliEditorError::TargetNotFound(CliKind::Codex))?;
     validate_native_metadata(target)
 }
 
@@ -310,31 +310,31 @@ fn metadata_modified_unix_ms(metadata: &std::fs::Metadata) -> u128 {
 pub(crate) fn validate_native_metadata(target: &NativeTarget) -> Result<()> {
     let path = target.path.canonicalize().map_err(|source| {
         if source.kind() == std::io::ErrorKind::NotFound {
-            CliEditorError::NativeTargetMissing {
+            CodexCliEditorError::NativeTargetMissing {
                 kind: CliKind::Codex,
                 path: target.path.clone(),
             }
         } else {
-            CliEditorError::io(&target.path, source)
+            CodexCliEditorError::io(&target.path, source)
         }
     })?;
     let root = target
         .package_root
         .canonicalize()
-        .map_err(|source| CliEditorError::io(&target.package_root, source))?;
+        .map_err(|source| CodexCliEditorError::io(&target.package_root, source))?;
     if path != target.path || !path.starts_with(root) || !has_exe_extension(&path) {
-        return Err(CliEditorError::TargetChanged(target.path.clone()));
+        return Err(CodexCliEditorError::TargetChanged(target.path.clone()));
     }
     let metadata = path
         .metadata()
-        .map_err(|source| CliEditorError::io(&path, source))?;
+        .map_err(|source| CodexCliEditorError::io(&path, source))?;
     let modified = metadata
         .modified()
         .ok()
         .and_then(|value| value.duration_since(std::time::UNIX_EPOCH).ok())
         .map_or(0, |value| value.as_millis());
     if metadata.len() != target.file_size || modified != target.modified_unix_ms {
-        return Err(CliEditorError::TargetChanged(path));
+        return Err(CodexCliEditorError::TargetChanged(path));
     }
     Ok(())
 }
@@ -393,7 +393,7 @@ mod tests {
     fn detects_shim_name_case_insensitively() {
         assert!(invocation_kind(Path::new(r"C:\shim\CODEX.exe")));
         assert!(!invocation_kind(Path::new(r"C:\shim\other.exe")));
-        assert!(!invocation_kind(Path::new(r"C:\shim\cli-editor.exe")));
+        assert!(!invocation_kind(Path::new(r"C:\shim\codex-cli-editor.exe")));
     }
 
     #[test]
@@ -476,7 +476,7 @@ mod tests {
                 true,
                 true,
             ),
-            Err(crate::CliEditorError::ArtifactVerificationFailed(path)) if path == enhanced_path
+            Err(crate::CodexCliEditorError::ArtifactVerificationFailed(path)) if path == enhanced_path
         ));
     }
     #[test]
@@ -503,7 +503,7 @@ mod tests {
 
         let (returned, native_validated, force_native) =
             super::revalidate_native_target_with(&store, test_state, false, |target| {
-                Err(crate::CliEditorError::VersionProbeTimedOut {
+                Err(crate::CodexCliEditorError::VersionProbeTimedOut {
                     path: target.path.clone(),
                     timeout_seconds: 60,
                 })
@@ -532,7 +532,7 @@ mod tests {
 
         assert!(matches!(
             super::validate_native_metadata(&target),
-            Err(crate::CliEditorError::NativeTargetMissing {
+            Err(crate::CodexCliEditorError::NativeTargetMissing {
                 kind: CliKind::Codex,
                 path,
             }) if path == missing
@@ -581,7 +581,7 @@ mod tests {
 
         let (returned, native_validated, force_native) =
             super::revalidate_native_target_with(&store, stale, true, |_| {
-                Err(crate::CliEditorError::StateChangedDuringOperation)
+                Err(crate::CodexCliEditorError::StateChangedDuringOperation)
             })
             .unwrap();
 
@@ -647,14 +647,14 @@ mod tests {
     #[test]
     fn shim_token_parsing_preserves_arguments_and_literal_escape() {
         let (explicit, args) = parse_shim_args(vec![
-            OsString::from("CLI-EDITOR"),
+            OsString::from("CODEX-CLI-EDITOR"),
             OsString::from("--"),
             OsString::from("prompt"),
         ]);
         assert!(explicit);
         assert_eq!(args, vec![OsString::from("prompt")]);
 
-        let escaped = vec![OsString::from("--"), OsString::from("cli-editor")];
+        let escaped = vec![OsString::from("--"), OsString::from("codex-cli-editor")];
         let (explicit, args) = parse_shim_args(escaped.clone());
         assert!(!explicit);
         assert_eq!(args, escaped);
@@ -683,7 +683,7 @@ mod tests {
         assert!(!compatibility_allows_at(&state, false, 200, None).unwrap());
         assert!(matches!(
             compatibility_allows_at(&state, true, 200, None),
-            Err(crate::CliEditorError::UnsupportedCodexVersion(_))
+            Err(crate::CodexCliEditorError::UnsupportedCodexVersion(_))
         ));
     }
 

@@ -13,7 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let signature_path = Path::new(&arguments[3]);
     let public_key_path = Path::new(&arguments[4]);
     let private_key = Zeroizing::new(if private_key_path == Path::new("-") {
-        std::env::var("CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX")?
+        std::env::var("CODEX_CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX")?
     } else {
         std::fs::read_to_string(private_key_path)?
     });

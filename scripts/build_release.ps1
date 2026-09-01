@@ -5,7 +5,7 @@ param(
     [Parameter(Mandatory)] [uint64] $ExpiresUnix,
     [uint64] $IssuedUnix = 0,
     [string] $CodexVersion = '0.148.0',
-    [string] $Repository = 'AsadSaleemQ/cli-editor',
+    [string] $Repository = 'AsadSaleemQ/codex-cli-editor',
     [string[]] $VsCodeVersions = @('1.134.0', '1.135.0')
 )
 
@@ -13,13 +13,13 @@ $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $upstreamCommit = '3ba0f711642a888aec92a611a3f3b2211157ff89'
 $patch = Join-Path $root 'patches\codex\rust-v0.148.0\0001-desktop-composer.patch'
-$expectedPatchSha256 = '09366ede4de32f98d608d960bf87b137ca91691bc27fb25511c30338c10bcaed'
+$expectedPatchSha256 = 'f12b510cc9842ba6be8c1ab509af9b303f9e6e4bfc4c36510396c734ebcf9e03'
 $work = Join-Path $root ".work\release-$Version"
 $upstream = Join-Path $work 'codex'
 $artifacts = Join-Path $root '.artifacts'
-$bundle = Join-Path $artifacts "cli-editor-$Version-windows-x64"
+$bundle = Join-Path $artifacts "codex-cli-editor-$Version-windows-x64"
 $archive = "$bundle.zip"
-$releaseTag = "cli-editor-v$Version-codex$CodexVersion"
+$releaseTag = "codex-cli-editor-v$Version-codex$CodexVersion"
 
 function Get-Sha256([string] $Path) {
     $stream = [IO.File]::OpenRead($Path)
@@ -73,7 +73,7 @@ $env:CARGO_PROFILE_RELEASE_INCREMENTAL = 'false'
 $env:CARGO_PROFILE_RELEASE_DEBUG = '0'
 $env:CARGO_PROFILE_RELEASE_CODEGEN_UNITS = '1'
 $deterministicRustflags = @(
-    "--remap-path-prefix=$root=Z:/cli-editor",
+    "--remap-path-prefix=$root=Z:/codex-cli-editor",
     "--remap-path-prefix=$upstream=Z:/codex",
     '-C',
     'link-arg=/Brepro'
@@ -96,10 +96,10 @@ $env:CARGO_ENCODED_RUSTFLAGS = (@(
 if ($LASTEXITCODE -ne 0) { throw 'patched Codex build failed' }
 
 [IO.Directory]::CreateDirectory($bundle) | Out-Null
-$vscodeExtensionName = 'cli-editor.vsix'
+$vscodeExtensionName = 'codex-cli-editor.vsix'
 & (Join-Path $root 'scripts\build_vscode_extension.ps1') -OutputPath (Join-Path $bundle $vscodeExtensionName)
 $files = [ordered]@{
-    'cli-editor.exe' = Join-Path $root 'target\release\cli-editor.exe'
+    'codex-cli-editor.exe' = Join-Path $root 'target\release\codex-cli-editor.exe'
     'codex-enhanced.exe' = Join-Path $upstream 'codex-rs\target\release\codex.exe'
     'codex-code-mode-host.exe' = Join-Path $upstream 'codex-rs\target\release\codex-code-mode-host.exe'
 }
@@ -117,7 +117,7 @@ if ($LASTEXITCODE -ne 0) { throw 'dispatcher dependency fetch failed before froz
 & cargo +1.95.0-x86_64-pc-windows-msvc fetch --locked --manifest-path (Join-Path $upstream 'codex-rs\Cargo.toml')
 if ($LASTEXITCODE -ne 0) { throw 'upstream dependency fetch failed before frozen license generation' }
 $licenseReports = @(
-    @{ Manifest = (Join-Path $root 'Cargo.toml'); Output = 'THIRD_PARTY_LICENSES_CLI_EDITOR.html' },
+    @{ Manifest = (Join-Path $root 'Cargo.toml'); Output = 'THIRD_PARTY_LICENSES_CODEX_CLI_EDITOR.html' },
     @{ Manifest = (Join-Path $upstream 'codex-rs\Cargo.toml'); Output = 'THIRD_PARTY_LICENSES_CODEX.html' }
 )
 foreach ($report in $licenseReports) {
@@ -148,7 +148,7 @@ foreach ($name in $files.Keys) {
     & $strip --strip-all (Join-Path $bundle $name)
     if ($LASTEXITCODE -ne 0) { throw "symbol stripping failed for $name" }
 }
-$dispatcherVersion = & (Join-Path $bundle 'cli-editor.exe') --version
+$dispatcherVersion = & (Join-Path $bundle 'codex-cli-editor.exe') --version
 if ($LASTEXITCODE -ne 0 -or ($dispatcherVersion -join ' ') -notmatch [regex]::Escape($Version)) {
     throw "Codex CLI Editor smoke test did not report $Version"
 }
@@ -226,19 +226,19 @@ $sbom = [ordered]@{
         timestamp = [DateTimeOffset]::FromUnixTimeSeconds([int64]$IssuedUnix).UtcDateTime.ToString('yyyy-MM-ddTHH:mm:ssZ')
         component = [ordered]@{
             type = 'application'
-            name = 'cli-editor'
+            name = 'codex-cli-editor'
             version = $Version
             properties = @(
-                [ordered]@{ name = 'cli-editor:codex-upstream-commit'; value = $upstreamCommit },
-                [ordered]@{ name = 'cli-editor:manifest-sha256'; value = $manifestDigest }
+                [ordered]@{ name = 'codex-cli-editor:codex-upstream-commit'; value = $upstreamCommit },
+                [ordered]@{ name = 'codex-cli-editor:manifest-sha256'; value = $manifestDigest }
             )
         }
     }
     components = @($components)
 }
-$sbomPath = Join-Path $artifacts "cli-editor-$Version.sbom.json"
+$sbomPath = Join-Path $artifacts "codex-cli-editor-$Version.sbom.json"
 [IO.File]::WriteAllText($sbomPath, ($sbom | ConvertTo-Json -Depth 12) + "`n", (New-Object Text.UTF8Encoding($false)))
-$sourceArchive = Join-Path $artifacts "cli-editor-$Version-source.zip"
+$sourceArchive = Join-Path $artifacts "codex-cli-editor-$Version-source.zip"
 & git -C $root archive --format=zip --output=$sourceArchive HEAD
 if ($LASTEXITCODE -ne 0) { throw 'source archive generation failed' }
 $expectedBundleFiles = @($files.Keys) + $vscodeExtensionName + $distributionDocs + @($licenseReports.Output) + @('compatibility-manifest.json')

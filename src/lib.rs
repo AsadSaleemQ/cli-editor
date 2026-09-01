@@ -18,7 +18,7 @@ use error::Result;
 pub use cli::CliKind;
 pub use discovery::DiscoveryOptions;
 pub use discovery::discover_native;
-pub use error::CliEditorError;
+pub use error::CodexCliEditorError;
 pub use process::run_native;
 pub use state::AdoptionRecord;
 pub use state::ManifestCacheRecord;
@@ -32,7 +32,7 @@ pub fn run() -> Result<i32> {
     let executable = std::env::current_exe()
         .ok()
         .or_else(|| args.first().map(std::path::PathBuf::from))
-        .ok_or(CliEditorError::StateDirectoryUnavailable)?;
+        .ok_or(CodexCliEditorError::StateDirectoryUnavailable)?;
     if dispatcher::invocation_kind(&executable) {
         return dispatcher::run_shim(args.into_iter().skip(1).collect());
     }
@@ -76,7 +76,7 @@ pub fn run() -> Result<i32> {
         None => {
             Cli::command()
                 .print_help()
-                .map_err(|source| CliEditorError::io("stdout", source))?;
+                .map_err(|source| CodexCliEditorError::io("stdout", source))?;
             println!();
             Ok(0)
         }
@@ -96,7 +96,7 @@ mod test_support {
     impl TempDir {
         pub fn new() -> Self {
             let unique = format!(
-                "cli-editor-test-{}-{}",
+                "codex-cli-editor-test-{}-{}",
                 std::process::id(),
                 NEXT_ID.fetch_add(1, Ordering::Relaxed)
             );

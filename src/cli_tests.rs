@@ -6,24 +6,24 @@ use super::Command;
 
 #[test]
 fn accepts_codex_and_rejects_unknown_targets() {
-    let cli = Cli::try_parse_from(["cli-editor", "default", "codex"])
+    let cli = Cli::try_parse_from(["codex-cli-editor", "default", "codex"])
         .expect("Codex default should parse");
     assert!(matches!(cli.command, Some(Command::Default { .. })));
 
-    let error = Cli::try_parse_from(["cli-editor", "default", "other"])
+    let error = Cli::try_parse_from(["codex-cli-editor", "default", "other"])
         .expect_err("unknown targets must not be supported");
     assert_eq!(error.kind(), clap::error::ErrorKind::InvalidValue);
 }
 #[test]
 fn update_requires_an_explicit_bundle_directory() {
-    let error = Cli::try_parse_from(["cli-editor", "update"])
+    let error = Cli::try_parse_from(["codex-cli-editor", "update"])
         .expect_err("update without a bundle should fail closed");
     assert_eq!(
         error.kind(),
         clap::error::ErrorKind::MissingRequiredArgument
     );
 
-    let cli = Cli::try_parse_from(["cli-editor", "update", "--bundle", r"C:\release"])
+    let cli = Cli::try_parse_from(["codex-cli-editor", "update", "--bundle", r"C:\release"])
         .expect("explicit release bundle should parse");
     assert!(matches!(cli.command, Some(Command::Update { .. })));
 }

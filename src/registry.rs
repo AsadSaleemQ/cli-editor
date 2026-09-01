@@ -15,7 +15,7 @@ mod implementation {
     use winapi::um::winuser::{HWND_BROADCAST, SMTO_ABORTIFHUNG, SendMessageTimeoutW};
 
     use crate::error::Result;
-    use crate::{CliEditorError, RegistryValueSnapshot};
+    use crate::{CodexCliEditorError, RegistryValueSnapshot};
 
     const ENVIRONMENT_KEY: &str = "Environment";
     const PATH_VALUE: &str = "Path";
@@ -33,8 +33,8 @@ mod implementation {
         value.encode_utf16().chain([0]).collect()
     }
 
-    fn registry_error(api: &'static str, status: i32) -> CliEditorError {
-        CliEditorError::RegistryApi {
+    fn registry_error(api: &'static str, status: i32) -> CodexCliEditorError {
+        CodexCliEditorError::RegistryApi {
             api,
             source: std::io::Error::from_raw_os_error(status),
         }
@@ -81,7 +81,7 @@ mod implementation {
         if value_type != REG_SZ && value_type != REG_EXPAND_SZ
             || !size.is_multiple_of(size_of::<u16>() as u32)
         {
-            return Err(CliEditorError::UnsupportedUserPath);
+            return Err(CodexCliEditorError::UnsupportedUserPath);
         }
         let mut data = vec![0u8; size as usize];
         // SAFETY: data has exactly the byte capacity reported by the first query.
@@ -115,7 +115,7 @@ mod implementation {
             units.pop();
         }
         let current =
-            String::from_utf16(&units).map_err(|_| CliEditorError::UnsupportedUserPath)?;
+            String::from_utf16(&units).map_err(|_| CodexCliEditorError::UnsupportedUserPath)?;
         let shim_text = shim.as_os_str().to_string_lossy();
         if current
             .split(';')
@@ -141,7 +141,7 @@ mod implementation {
             units.pop();
         }
         let current =
-            String::from_utf16(&units).map_err(|_| CliEditorError::UnsupportedUserPath)?;
+            String::from_utf16(&units).map_err(|_| CodexCliEditorError::UnsupportedUserPath)?;
         let shim_text = shim.as_os_str().to_string_lossy();
         let filtered = current
             .split(';')
@@ -158,7 +158,7 @@ mod implementation {
 
     pub fn write_user_path(value_type: DWORD, data: &[u8]) -> Result<()> {
         if value_type != REG_SZ && value_type != REG_EXPAND_SZ {
-            return Err(CliEditorError::UnsupportedUserPath);
+            return Err(CodexCliEditorError::UnsupportedUserPath);
         }
         let key = open_environment(KEY_SET_VALUE)?;
         let name = wide(PATH_VALUE);
@@ -202,7 +202,7 @@ mod implementation {
             )
         };
         if sent == 0 {
-            return Err(CliEditorError::WindowsApi {
+            return Err(CodexCliEditorError::WindowsApi {
                 api: "SendMessageTimeoutW",
                 source: std::io::Error::last_os_error(),
             });

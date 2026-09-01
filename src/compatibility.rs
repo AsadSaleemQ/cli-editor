@@ -1,7 +1,7 @@
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 
-use crate::error::{CliEditorError, Result};
+use crate::error::{CodexCliEditorError, Result};
 
 pub const MANIFEST_SCHEMA_VERSION: u32 = 1;
 pub const EXPIRY_GRACE_SECONDS: u64 = 30 * 24 * 60 * 60;
@@ -74,33 +74,33 @@ fn verify_manifest_with_key_hex(
     public_key_hex: &str,
 ) -> Result<VerifiedManifest> {
     let key_bytes: [u8; 32] = hex::decode(public_key_hex.trim())
-        .map_err(|_| CliEditorError::InvalidManifestKey)?
+        .map_err(|_| CodexCliEditorError::InvalidManifestKey)?
         .try_into()
-        .map_err(|_| CliEditorError::InvalidManifestKey)?;
+        .map_err(|_| CodexCliEditorError::InvalidManifestKey)?;
     let signature_bytes: [u8; 64] = hex::decode(signature_hex.trim())
-        .map_err(|_| CliEditorError::InvalidManifestSignature)?
+        .map_err(|_| CodexCliEditorError::InvalidManifestSignature)?
         .try_into()
-        .map_err(|_| CliEditorError::InvalidManifestSignature)?;
-    let key =
-        VerifyingKey::from_bytes(&key_bytes).map_err(|_| CliEditorError::InvalidManifestKey)?;
+        .map_err(|_| CodexCliEditorError::InvalidManifestSignature)?;
+    let key = VerifyingKey::from_bytes(&key_bytes)
+        .map_err(|_| CodexCliEditorError::InvalidManifestKey)?;
     let signature = Signature::from_bytes(&signature_bytes);
     key.verify(bytes, &signature)
-        .map_err(|_| CliEditorError::InvalidManifestSignature)?;
+        .map_err(|_| CodexCliEditorError::InvalidManifestSignature)?;
 
     let manifest: CompatibilityManifest = serde_json::from_slice(bytes)?;
     if manifest.schema_version != MANIFEST_SCHEMA_VERSION {
-        return Err(CliEditorError::UnsupportedManifestSchema(
+        return Err(CodexCliEditorError::UnsupportedManifestSchema(
             manifest.schema_version,
         ));
     }
     if manifest.sequence < highest_accepted_sequence {
-        return Err(CliEditorError::ManifestRollback {
+        return Err(CodexCliEditorError::ManifestRollback {
             highest: highest_accepted_sequence,
             received: manifest.sequence,
         });
     }
     if manifest.issued_unix > manifest.expires_unix {
-        return Err(CliEditorError::InvalidManifestWindow);
+        return Err(CodexCliEditorError::InvalidManifestWindow);
     }
     let freshness = if now_unix <= manifest.expires_unix {
         Freshness::Fresh
@@ -146,12 +146,12 @@ fn verify_with_key(
     now: u64,
 ) -> Result<VerifiedManifest> {
     let key =
-        VerifyingKey::from_bytes(key_bytes).map_err(|_| CliEditorError::InvalidManifestKey)?;
+        VerifyingKey::from_bytes(key_bytes).map_err(|_| CodexCliEditorError::InvalidManifestKey)?;
     key.verify(bytes, &Signature::from_bytes(signature_bytes))
-        .map_err(|_| CliEditorError::InvalidManifestSignature)?;
+        .map_err(|_| CodexCliEditorError::InvalidManifestSignature)?;
     let manifest: CompatibilityManifest = serde_json::from_slice(bytes)?;
     if manifest.sequence < highest {
-        return Err(CliEditorError::ManifestRollback {
+        return Err(CodexCliEditorError::ManifestRollback {
             highest,
             received: manifest.sequence,
         });

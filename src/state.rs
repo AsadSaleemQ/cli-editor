@@ -16,7 +16,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::CliKind;
-use crate::error::CliEditorError;
+use crate::error::CodexCliEditorError;
 use crate::error::Result;
 
 pub const STATE_SCHEMA_VERSION: u32 = 1;
@@ -75,7 +75,7 @@ impl State {
 
     pub fn validate(&self) -> Result<()> {
         if self.schema_version != STATE_SCHEMA_VERSION {
-            return Err(CliEditorError::UnsupportedStateSchema {
+            return Err(CodexCliEditorError::UnsupportedStateSchema {
                 expected: STATE_SCHEMA_VERSION,
                 found: self.schema_version,
             });
@@ -94,12 +94,12 @@ impl State {
         if let Some(shims) = &self.shim_directory
             && !same_owned_path(shims, &expected_shims)
         {
-            return Err(CliEditorError::UnsafeTarget(shims.clone()));
+            return Err(CodexCliEditorError::UnsafeTarget(shims.clone()));
         }
         if self.path_entry_added
             && (self.shim_directory.is_none() || self.pre_install_user_path.is_none())
         {
-            return Err(CliEditorError::UnsafeTarget(expected_shims));
+            return Err(CodexCliEditorError::UnsafeTarget(expected_shims));
         }
         if let Some(release) = &self.active_release
             && !release
@@ -107,17 +107,21 @@ impl State {
                 .parent()
                 .is_some_and(|parent| same_owned_path(parent, &versions))
         {
-            return Err(CliEditorError::UnsafeTarget(release.directory.clone()));
+            return Err(CodexCliEditorError::UnsafeTarget(release.directory.clone()));
         }
         if let Some(release) = &self.active_release {
             ensure_not_reparse(&release.directory)?;
         }
         if let Some(cache) = &self.manifest_cache {
             if !same_owned_path(&cache.manifest_path, &compatibility.join("manifest.json")) {
-                return Err(CliEditorError::UnsafeTarget(cache.manifest_path.clone()));
+                return Err(CodexCliEditorError::UnsafeTarget(
+                    cache.manifest_path.clone(),
+                ));
             }
             if !same_owned_path(&cache.signature_path, &compatibility.join("manifest.sig")) {
-                return Err(CliEditorError::UnsafeTarget(cache.signature_path.clone()));
+                return Err(CodexCliEditorError::UnsafeTarget(
+                    cache.signature_path.clone(),
+                ));
             }
         }
         Ok(())
@@ -128,19 +132,19 @@ pub(crate) fn ensure_not_reparse(path: &Path) -> Result<()> {
     let metadata = match std::fs::symlink_metadata(path) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-        Err(source) => return Err(CliEditorError::io(path, source)),
+        Err(source) => return Err(CodexCliEditorError::io(path, source)),
     };
     #[cfg(windows)]
     {
         use std::os::windows::fs::MetadataExt;
         const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
         if metadata.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
-            return Err(CliEditorError::UnsafeTarget(path.to_path_buf()));
+            return Err(CodexCliEditorError::UnsafeTarget(path.to_path_buf()));
         }
     }
     #[cfg(not(windows))]
     if metadata.file_type().is_symlink() {
-        return Err(CliEditorError::UnsafeTarget(path.to_path_buf()));
+        return Err(CodexCliEditorError::UnsafeTarget(path.to_path_buf()));
     }
     Ok(())
 }
@@ -227,8 +231,8 @@ impl StateStore {
     pub fn for_current_user() -> Result<Self> {
         let base = std::env::var_os("LOCALAPPDATA")
             .map(PathBuf::from)
-            .ok_or(CliEditorError::StateDirectoryUnavailable)?;
-        Ok(Self::new(base.join("CLIEditor")))
+            .ok_or(CodexCliEditorError::StateDirectoryUnavailable)?;
+        Ok(Self::new(base.join("CodexCLIEditor")))
     }
 
     pub fn new(root: PathBuf) -> Self {
@@ -244,7 +248,7 @@ impl StateStore {
         let bytes = match std::fs::read(&path) {
             Ok(bytes) => bytes,
             Err(source) if source.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-            Err(source) => return Err(CliEditorError::io(&path, source)),
+            Err(source) => return Err(CodexCliEditorError::io(&path, source)),
         };
         let state: State = serde_json::from_slice(&bytes)?;
         state.validate_owned_paths(&self.root)?;
@@ -272,13 +276,13 @@ impl StateStore {
         F: FnOnce(&State) -> Result<T>,
     {
         let _lock = self.lock(STATE_LOCK_TIMEOUT)?;
-        let state = self.load()?.ok_or(CliEditorError::NotInstalled)?;
+        let state = self.load()?.ok_or(CodexCliEditorError::NotInstalled)?;
         let output = operation(&state)?;
         for path in [self.state_path(), self.root.join("state.backup.json")] {
             match std::fs::remove_file(&path) {
                 Ok(()) => {}
                 Err(source) if source.kind() == std::io::ErrorKind::NotFound => {}
-                Err(source) => return Err(CliEditorError::io(&path, source)),
+                Err(source) => return Err(CodexCliEditorError::io(&path, source)),
             }
         }
         Ok(output)
@@ -286,7 +290,7 @@ impl StateStore {
     fn save_locked(&self, state: &State) -> Result<()> {
         state.validate_owned_paths(&self.root)?;
         std::fs::create_dir_all(&self.root)
-            .map_err(|source| CliEditorError::io(&self.root, source))?;
+            .map_err(|source| CodexCliEditorError::io(&self.root, source))?;
         let target = self.state_path();
         let temp = self.root.join(format!(
             "state.{}.{:032x}.{}.tmp",
@@ -302,17 +306,17 @@ impl StateStore {
             .write(true)
             .create_new(true)
             .open(&temp)
-            .map_err(|source| CliEditorError::io(&temp, source))?;
+            .map_err(|source| CodexCliEditorError::io(&temp, source))?;
         if let Err(source) = file.write_all(&bytes).and_then(|()| file.sync_all()) {
             let _ = std::fs::remove_file(&temp);
-            return Err(CliEditorError::io(&temp, source));
+            return Err(CodexCliEditorError::io(&temp, source));
         }
         drop(file);
 
         if target.exists() {
             let backup = self.root.join("state.backup.json");
             std::fs::copy(&target, &backup)
-                .map_err(|source| CliEditorError::io(&backup, source))?;
+                .map_err(|source| CodexCliEditorError::io(&backup, source))?;
         }
         replace_file(&temp, &target).inspect_err(|_| {
             let _ = std::fs::remove_file(&temp);
@@ -321,7 +325,7 @@ impl StateStore {
 
     fn lock(&self, timeout: Duration) -> Result<StateLock> {
         std::fs::create_dir_all(&self.root)
-            .map_err(|source| CliEditorError::io(&self.root, source))?;
+            .map_err(|source| CodexCliEditorError::io(&self.root, source))?;
         ensure_not_reparse(&self.root)?;
         let path = self.root.join("state.lock");
         let file = OpenOptions::new()
@@ -330,18 +334,18 @@ impl StateStore {
             .create(true)
             .truncate(false)
             .open(&path)
-            .map_err(|source| CliEditorError::io(&path, source))?;
+            .map_err(|source| CodexCliEditorError::io(&path, source))?;
         let started = Instant::now();
         loop {
             match file.try_lock_exclusive() {
                 Ok(()) => return Ok(StateLock { file }),
                 Err(source) if is_lock_contended(&source) => {
                     if started.elapsed() >= timeout {
-                        return Err(CliEditorError::LockTimeout);
+                        return Err(CodexCliEditorError::LockTimeout);
                     }
                     thread::sleep(Duration::from_millis(10));
                 }
-                Err(source) => return Err(CliEditorError::io(&path, source)),
+                Err(source) => return Err(CodexCliEditorError::io(&path, source)),
             }
         }
     }
@@ -384,14 +388,17 @@ pub(crate) fn replace_file(source: &Path, target: &Path) -> Result<()> {
         )
     };
     if result == 0 {
-        return Err(CliEditorError::io(target, std::io::Error::last_os_error()));
+        return Err(CodexCliEditorError::io(
+            target,
+            std::io::Error::last_os_error(),
+        ));
     }
     Ok(())
 }
 
 #[cfg(not(windows))]
 pub(crate) fn replace_file(source: &Path, target: &Path) -> Result<()> {
-    std::fs::rename(source, target).map_err(|source| CliEditorError::io(target, source))
+    std::fs::rename(source, target).map_err(|source| CodexCliEditorError::io(target, source))
 }
 
 #[cfg(test)]

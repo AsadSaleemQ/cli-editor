@@ -1,11 +1,11 @@
 [package]
-name = "cli-editor"
-version = "0.1.4"
-default-run = "cli-editor"
+name = "codex-cli-editor"
+version = "0.2.0"
+default-run = "codex-cli-editor"
 edition = "2024"
 license = "Apache-2.0"
 description = "Codex CLI Editor turns Codex terminals into chat-style editors with smart clipboard paste and familiar shortcuts"
-repository = "https://github.com/AsadSaleemQ/cli-editor"
+repository = "https://github.com/AsadSaleemQ/codex-cli-editor"
 rust-version = "1.95"
 
 [dependencies]

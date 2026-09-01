@@ -6,7 +6,7 @@ on:
       version:
         description: Release version without v prefix
         required: true
-        default: 0.1.4
+        default: 0.2.0
       manifest_sequence:
         description: Strictly increasing signed manifest sequence
         required: true
@@ -15,7 +15,7 @@ on:
         required: true
 
 concurrency:
-  group: cli-editor-release
+  group: codex-cli-editor-release
   cancel-in-progress: false
 
 permissions:
@@ -163,20 +163,20 @@ jobs:
       - name: Build primary unsigned artifact set
         shell: pwsh
         env:
-          CLI_EDITOR_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-          CLI_EDITOR_CODEX_VERSION: ${{ needs.prepare.outputs.codex_version }}
-          CLI_EDITOR_REPOSITORY: ${{ needs.prepare.outputs.repository }}
-          CLI_EDITOR_MANIFEST_SEQUENCE: ${{ needs.prepare.outputs.manifest_sequence }}
-          CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
-          CLI_EDITOR_ISSUED_UNIX: ${{ needs.prepare.outputs.issued_unix }}
+          CODEX_CLI_EDITOR_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          CODEX_CLI_EDITOR_CODEX_VERSION: ${{ needs.prepare.outputs.codex_version }}
+          CODEX_CLI_EDITOR_REPOSITORY: ${{ needs.prepare.outputs.repository }}
+          CODEX_CLI_EDITOR_MANIFEST_SEQUENCE: ${{ needs.prepare.outputs.manifest_sequence }}
+          CODEX_CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
+          CODEX_CLI_EDITOR_ISSUED_UNIX: ${{ needs.prepare.outputs.issued_unix }}
         run: |
           .\scripts\build_release.ps1 `
-            -Version $env:CLI_EDITOR_RELEASE_VERSION `
-            -CodexVersion $env:CLI_EDITOR_CODEX_VERSION `
-            -Repository $env:CLI_EDITOR_REPOSITORY `
-            -ManifestSequence ([uint64]$env:CLI_EDITOR_MANIFEST_SEQUENCE) `
-            -ExpiresUnix ([uint64]$env:CLI_EDITOR_EXPIRES_UNIX) `
-            -IssuedUnix ([uint64]$env:CLI_EDITOR_ISSUED_UNIX)
+            -Version $env:CODEX_CLI_EDITOR_RELEASE_VERSION `
+            -CodexVersion $env:CODEX_CLI_EDITOR_CODEX_VERSION `
+            -Repository $env:CODEX_CLI_EDITOR_REPOSITORY `
+            -ManifestSequence ([uint64]$env:CODEX_CLI_EDITOR_MANIFEST_SEQUENCE) `
+            -ExpiresUnix ([uint64]$env:CODEX_CLI_EDITOR_EXPIRES_UNIX) `
+            -IssuedUnix ([uint64]$env:CODEX_CLI_EDITOR_ISSUED_UNIX)
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: primary-unsigned-assets
@@ -207,20 +207,20 @@ jobs:
       - name: Independently rebuild primary unsigned artifact set
         shell: pwsh
         env:
-          CLI_EDITOR_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-          CLI_EDITOR_CODEX_VERSION: ${{ needs.prepare.outputs.codex_version }}
-          CLI_EDITOR_REPOSITORY: ${{ needs.prepare.outputs.repository }}
-          CLI_EDITOR_MANIFEST_SEQUENCE: ${{ needs.prepare.outputs.manifest_sequence }}
-          CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
-          CLI_EDITOR_ISSUED_UNIX: ${{ needs.prepare.outputs.issued_unix }}
+          CODEX_CLI_EDITOR_RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
+          CODEX_CLI_EDITOR_CODEX_VERSION: ${{ needs.prepare.outputs.codex_version }}
+          CODEX_CLI_EDITOR_REPOSITORY: ${{ needs.prepare.outputs.repository }}
+          CODEX_CLI_EDITOR_MANIFEST_SEQUENCE: ${{ needs.prepare.outputs.manifest_sequence }}
+          CODEX_CLI_EDITOR_EXPIRES_UNIX: ${{ needs.prepare.outputs.expires_unix }}
+          CODEX_CLI_EDITOR_ISSUED_UNIX: ${{ needs.prepare.outputs.issued_unix }}
         run: |
           .\scripts\build_release.ps1 `
-            -Version $env:CLI_EDITOR_RELEASE_VERSION `
-            -CodexVersion $env:CLI_EDITOR_CODEX_VERSION `
-            -Repository $env:CLI_EDITOR_REPOSITORY `
-            -ManifestSequence ([uint64]$env:CLI_EDITOR_MANIFEST_SEQUENCE) `
-            -ExpiresUnix ([uint64]$env:CLI_EDITOR_EXPIRES_UNIX) `
-            -IssuedUnix ([uint64]$env:CLI_EDITOR_ISSUED_UNIX)
+            -Version $env:CODEX_CLI_EDITOR_RELEASE_VERSION `
+            -CodexVersion $env:CODEX_CLI_EDITOR_CODEX_VERSION `
+            -Repository $env:CODEX_CLI_EDITOR_REPOSITORY `
+            -ManifestSequence ([uint64]$env:CODEX_CLI_EDITOR_MANIFEST_SEQUENCE) `
+            -ExpiresUnix ([uint64]$env:CODEX_CLI_EDITOR_EXPIRES_UNIX) `
+            -IssuedUnix ([uint64]$env:CODEX_CLI_EDITOR_ISSUED_UNIX)
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: reproducibility-unsigned-assets
@@ -284,7 +284,7 @@ jobs:
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
-            unsigned/cli-editor-${{ needs.prepare.outputs.version }}-windows-x64/*.exe
-            unsigned/cli-editor-${{ needs.prepare.outputs.version }}-windows-x64/*.vsix
-            unsigned/cli-editor-${{ needs.prepare.outputs.version }}-source.zip
-            unsigned/cli-editor-${{ needs.prepare.outputs.version }}.sbom.json
+            unsigned/codex-cli-editor-${{ needs.prepare.outputs.version }}-windows-x64/*.exe
+            unsigned/codex-cli-editor-${{ needs.prepare.outputs.version }}-windows-x64/*.vsix
+            unsigned/codex-cli-editor-${{ needs.prepare.outputs.version }}-source.zip
+            unsigned/codex-cli-editor-${{ needs.prepare.outputs.version }}.sbom.json

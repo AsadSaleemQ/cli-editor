@@ -12,7 +12,7 @@ use sha2::Sha256;
 
 use crate::CliKind;
 use crate::NativeTarget;
-use crate::error::CliEditorError;
+use crate::error::CodexCliEditorError;
 use crate::error::Result;
 
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ pub struct DiscoveryOptions {
 impl DiscoveryOptions {
     pub fn from_environment(shim_dir: PathBuf) -> Result<Self> {
         let current_dir =
-            std::env::current_dir().map_err(|source| CliEditorError::io(".", source))?;
+            std::env::current_dir().map_err(|source| CodexCliEditorError::io(".", source))?;
         Ok(Self {
             path: std::env::var_os("PATH").unwrap_or_default(),
             current_dir,
@@ -53,7 +53,7 @@ pub fn discover_native(options: &DiscoveryOptions) -> Result<NativeTarget> {
             }
         }
     }
-    Err(CliEditorError::TargetNotFound(CliKind::Codex))
+    Err(CodexCliEditorError::TargetNotFound(CliKind::Codex))
 }
 
 pub(crate) fn inspect_target(
@@ -62,24 +62,24 @@ pub(crate) fn inspect_target(
     package_identity: String,
 ) -> Result<NativeTarget> {
     if !has_exe_extension(path) {
-        return Err(CliEditorError::UnsafeTarget(path.to_path_buf()));
+        return Err(CodexCliEditorError::UnsafeTarget(path.to_path_buf()));
     }
     let path = path
         .canonicalize()
-        .map_err(|source| CliEditorError::io(path, source))?;
+        .map_err(|source| CodexCliEditorError::io(path, source))?;
     if !has_exe_extension(&path) {
-        return Err(CliEditorError::UnsafeTarget(path));
+        return Err(CodexCliEditorError::UnsafeTarget(path));
     }
     let package_root = package_root
         .canonicalize()
-        .map_err(|source| CliEditorError::io(package_root, source))?;
+        .map_err(|source| CodexCliEditorError::io(package_root, source))?;
     if !path.starts_with(&package_root) {
-        return Err(CliEditorError::UnsafeTarget(path));
+        return Err(CodexCliEditorError::UnsafeTarget(path));
     }
 
     let metadata = path
         .metadata()
-        .map_err(|source| CliEditorError::io(&path, source))?;
+        .map_err(|source| CodexCliEditorError::io(&path, source))?;
     let modified_unix_ms = metadata
         .modified()
         .ok()
@@ -101,7 +101,7 @@ pub(crate) fn refresh_recorded_target(recorded: &NativeTarget) -> Result<NativeT
     let resolved = resolve_recorded_target(recorded)?;
     let refreshed = inspect_target(&resolved.path, &resolved.package_root, resolved.identity)?;
     if !same_package_identity(&recorded.package_identity, &refreshed.package_identity) {
-        return Err(CliEditorError::TargetChanged(recorded.path.clone()));
+        return Err(CodexCliEditorError::TargetChanged(recorded.path.clone()));
     }
     Ok(refreshed)
 }
@@ -113,24 +113,24 @@ pub(crate) fn validate_recorded_target_identity(recorded: &NativeTarget) -> Resu
 fn resolve_recorded_target(recorded: &NativeTarget) -> Result<ResolvedCandidate> {
     let path = recorded.path.canonicalize().map_err(|source| {
         if source.kind() == std::io::ErrorKind::NotFound {
-            CliEditorError::NativeTargetMissing {
+            CodexCliEditorError::NativeTargetMissing {
                 kind: CliKind::Codex,
                 path: recorded.path.clone(),
             }
         } else {
-            CliEditorError::io(&recorded.path, source)
+            CodexCliEditorError::io(&recorded.path, source)
         }
     })?;
     let package_root = recorded
         .package_root
         .canonicalize()
-        .map_err(|source| CliEditorError::io(&recorded.package_root, source))?;
+        .map_err(|source| CodexCliEditorError::io(&recorded.package_root, source))?;
     if path != recorded.path
         || package_root != recorded.package_root
         || !path.starts_with(&package_root)
         || !has_exe_extension(&path)
     {
-        return Err(CliEditorError::TargetChanged(recorded.path.clone()));
+        return Err(CodexCliEditorError::TargetChanged(recorded.path.clone()));
     }
 
     let native_identity = "codex:native-executable";
@@ -143,15 +143,15 @@ fn resolve_recorded_target(recorded: &NativeTarget) -> Result<ResolvedCandidate>
         let package_json_path = package_root.join("package.json");
         let package_json: PackageJson = serde_json::from_slice(
             &std::fs::read(&package_json_path)
-                .map_err(|source| CliEditorError::io(&package_json_path, source))?,
+                .map_err(|source| CodexCliEditorError::io(&package_json_path, source))?,
         )?;
         if package_json.name != "@openai/codex" || !is_expected_npm_codex_path(&path, &package_root)
         {
-            return Err(CliEditorError::TargetChanged(recorded.path.clone()));
+            return Err(CodexCliEditorError::TargetChanged(recorded.path.clone()));
         }
         format!("@openai/codex@{}", package_json.version)
     } else {
-        return Err(CliEditorError::TargetChanged(recorded.path.clone()));
+        return Err(CodexCliEditorError::TargetChanged(recorded.path.clone()));
     };
     Ok(ResolvedCandidate {
         path,
@@ -175,13 +175,13 @@ fn is_expected_npm_codex_path(path: &Path, package_root: &Path) -> bool {
     })
 }
 pub fn sha256_file(path: &Path) -> Result<String> {
-    let mut file = File::open(path).map_err(|source| CliEditorError::io(path, source))?;
+    let mut file = File::open(path).map_err(|source| CodexCliEditorError::io(path, source))?;
     let mut digest = Sha256::new();
     let mut buffer = [0_u8; 64 * 1024];
     loop {
         let count = file
             .read(&mut buffer)
-            .map_err(|source| CliEditorError::io(path, source))?;
+            .map_err(|source| CodexCliEditorError::io(path, source))?;
         if count == 0 {
             break;
         }
@@ -200,12 +200,12 @@ fn resolve_candidate(candidate: &Path) -> Result<Option<ResolvedCandidate>> {
     match candidate {
         candidate if has_npm_shim_extension(candidate) => resolve_npm_codex(candidate).map(Some),
         candidate if has_script_extension(candidate) => {
-            Err(CliEditorError::UnsafeTarget(candidate.to_path_buf()))
+            Err(CodexCliEditorError::UnsafeTarget(candidate.to_path_buf()))
         }
         candidate if has_exe_extension(candidate) => {
             let package_root = candidate
                 .parent()
-                .ok_or_else(|| CliEditorError::UnsafeTarget(candidate.to_path_buf()))?
+                .ok_or_else(|| CodexCliEditorError::UnsafeTarget(candidate.to_path_buf()))?
                 .to_path_buf();
             Ok(Some(ResolvedCandidate {
                 path: candidate.to_path_buf(),
@@ -219,20 +219,20 @@ fn resolve_candidate(candidate: &Path) -> Result<Option<ResolvedCandidate>> {
 
 fn read_official_package_json(shim: &Path, package_json_path: &Path) -> Result<PackageJson> {
     let bytes = std::fs::read(package_json_path)
-        .map_err(|_| CliEditorError::UnsupportedLauncher(shim.to_path_buf()))?;
+        .map_err(|_| CodexCliEditorError::UnsupportedLauncher(shim.to_path_buf()))?;
     serde_json::from_slice(&bytes)
-        .map_err(|_| CliEditorError::UnsupportedLauncher(shim.to_path_buf()))
+        .map_err(|_| CodexCliEditorError::UnsupportedLauncher(shim.to_path_buf()))
 }
 
 fn resolve_npm_codex(shim: &Path) -> Result<ResolvedCandidate> {
     let npm_root = shim
         .parent()
-        .ok_or_else(|| CliEditorError::UnsafeTarget(shim.to_path_buf()))?;
+        .ok_or_else(|| CodexCliEditorError::UnsafeTarget(shim.to_path_buf()))?;
     let package_root = npm_root.join("node_modules").join("@openai").join("codex");
     let package_json_path = package_root.join("package.json");
     let package_json = read_official_package_json(shim, &package_json_path)?;
     if package_json.name != "@openai/codex" {
-        return Err(CliEditorError::UnsupportedLauncher(shim.to_path_buf()));
+        return Err(CodexCliEditorError::UnsupportedLauncher(shim.to_path_buf()));
     }
 
     let platform_path = package_root
@@ -253,7 +253,7 @@ fn resolve_npm_codex(shim: &Path) -> Result<ResolvedCandidate> {
     } else if fallback_path.is_file() {
         fallback_path
     } else {
-        return Err(CliEditorError::TargetNotFound(CliKind::Codex));
+        return Err(CodexCliEditorError::TargetNotFound(CliKind::Codex));
     };
     Ok(ResolvedCandidate {
         path,
@@ -289,7 +289,7 @@ impl ProbeOutput {
         for _ in 0..100 {
             let sequence = PROBE_FILE_SEQUENCE.fetch_add(1, Ordering::Relaxed);
             let path = directory.join(format!(
-                "cli-editor-version-probe-{}-{sequence}.tmp",
+                "codex-cli-editor-version-probe-{}-{sequence}.tmp",
                 std::process::id()
             ));
             match std::fs::OpenOptions::new()
@@ -305,10 +305,10 @@ impl ProbeOutput {
                     });
                 }
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
-                Err(source) => return Err(CliEditorError::io(&path, source)),
+                Err(source) => return Err(CodexCliEditorError::io(&path, source)),
             }
         }
-        Err(CliEditorError::VersionProbeFailed(directory))
+        Err(CodexCliEditorError::VersionProbeFailed(directory))
     }
 
     fn child_stdout(&self) -> Result<File> {
@@ -316,19 +316,21 @@ impl ProbeOutput {
             .as_ref()
             .expect("probe output remains open")
             .try_clone()
-            .map_err(|source| CliEditorError::io(&self.path, source))
+            .map_err(|source| CodexCliEditorError::io(&self.path, source))
     }
 
     fn read(&mut self, target: &Path) -> Result<Vec<u8>> {
         let file = self.file.as_mut().expect("probe output remains open");
         file.seek(SeekFrom::Start(0))
-            .map_err(|source| CliEditorError::io(&self.path, source))?;
+            .map_err(|source| CodexCliEditorError::io(&self.path, source))?;
         let mut bytes = Vec::new();
         file.take(MAX_VERSION_OUTPUT_BYTES + 1)
             .read_to_end(&mut bytes)
-            .map_err(|source| CliEditorError::io(&self.path, source))?;
+            .map_err(|source| CodexCliEditorError::io(&self.path, source))?;
         if bytes.len() as u64 > MAX_VERSION_OUTPUT_BYTES {
-            return Err(CliEditorError::VersionProbeFailed(target.to_path_buf()));
+            return Err(CodexCliEditorError::VersionProbeFailed(
+                target.to_path_buf(),
+            ));
         }
         Ok(bytes)
     }
@@ -344,7 +346,7 @@ impl Drop for ProbeOutput {
 fn probe_version_with_timeout(path: &Path, timeout: std::time::Duration) -> Result<String> {
     let working_directory = path
         .parent()
-        .ok_or_else(|| CliEditorError::UnsafeTarget(path.to_path_buf()))?;
+        .ok_or_else(|| CodexCliEditorError::UnsafeTarget(path.to_path_buf()))?;
     let mut output = ProbeOutput::create()?;
     let child_stdout = output.child_stdout()?;
     let mut child = Command::new(path)
@@ -354,12 +356,12 @@ fn probe_version_with_timeout(path: &Path, timeout: std::time::Duration) -> Resu
         .stdout(std::process::Stdio::from(child_stdout))
         .stderr(std::process::Stdio::null())
         .spawn()
-        .map_err(|source| CliEditorError::io(path, source))?;
+        .map_err(|source| CodexCliEditorError::io(path, source))?;
     let started = std::time::Instant::now();
     let status = loop {
         match child
             .try_wait()
-            .map_err(|source| CliEditorError::io(path, source))?
+            .map_err(|source| CodexCliEditorError::io(path, source))?
         {
             Some(status) => break status,
             None if started.elapsed() < timeout => {
@@ -368,7 +370,7 @@ fn probe_version_with_timeout(path: &Path, timeout: std::time::Duration) -> Resu
             None => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return Err(CliEditorError::VersionProbeTimedOut {
+                return Err(CodexCliEditorError::VersionProbeTimedOut {
                     path: path.to_path_buf(),
                     timeout_seconds: timeout.as_secs(),
                 });
@@ -376,13 +378,13 @@ fn probe_version_with_timeout(path: &Path, timeout: std::time::Duration) -> Resu
         }
     };
     if !status.success() {
-        return Err(CliEditorError::VersionProbeFailed(path.to_path_buf()));
+        return Err(CodexCliEditorError::VersionProbeFailed(path.to_path_buf()));
     }
     let stdout = output.read(path)?;
     let stdout = String::from_utf8_lossy(&stdout);
     let version = stdout.trim();
     if version.is_empty() {
-        return Err(CliEditorError::VersionProbeFailed(path.to_path_buf()));
+        return Err(CodexCliEditorError::VersionProbeFailed(path.to_path_buf()));
     }
     Ok(version.to_owned())
 }

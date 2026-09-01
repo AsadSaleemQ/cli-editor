@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 $root = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $extensionRoot = Join-Path $root 'vscode-extension'
 $package = Get-Content -Raw -LiteralPath (Join-Path $extensionRoot 'package.json') | ConvertFrom-Json
-if ($package.publisher -ne 'asadsaleemq' -or $package.name -ne 'cli-editor') {
+if ($package.publisher -ne 'asadsaleemq' -or $package.name -ne 'codex-cli-editor') {
     throw 'Unexpected VS Code extension identity'
 }
 $destination = [IO.Path]::GetFullPath($OutputPath)
@@ -20,12 +20,12 @@ $manifest = @"
     <Identity Language="en-US" Id="$($package.publisher).$($package.name)" Version="$($package.version)" Publisher="$($package.publisher)" />
     <DisplayName>$($package.displayName)</DisplayName>
     <Description xml:space="preserve">$($package.description)</Description>
-    <Tags>terminal,codex,cli-editor</Tags>
+    <Tags>terminal,codex,codex-cli-editor</Tags>
     <Categories>Other</Categories>
     <GalleryFlags>Public</GalleryFlags>
     <Properties>
       <Property Id="Microsoft.VisualStudio.Code.Engine" Value="$($package.engines.vscode)" />
-      <Property Id="Microsoft.VisualStudio.Services.Links.Source" Value="https://github.com/AsadSaleemQ/cli-editor" />
+      <Property Id="Microsoft.VisualStudio.Services.Links.Source" Value="https://github.com/AsadSaleemQ/codex-cli-editor" />
     </Properties>
   </Metadata>
   <Installation><InstallationTarget Id="Microsoft.VisualStudio.Code" /></Installation>

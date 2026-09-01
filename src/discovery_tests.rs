@@ -31,7 +31,7 @@ fn missing_recorded_target_uses_the_actionable_launcher_error() {
 
     assert!(matches!(
         super::validate_recorded_target_identity(&recorded),
-        Err(crate::CliEditorError::NativeTargetMissing {
+        Err(crate::CodexCliEditorError::NativeTargetMissing {
             kind: CliKind::Codex,
             path,
         }) if path == missing
@@ -81,11 +81,11 @@ fn cold_native_and_release_probe_budgets_allow_security_scanning() {
 fn sha256_is_stable() {
     let temp = crate::test_support::TempDir::new();
     let path = temp.path().join("sample.exe");
-    std::fs::write(&path, "cli-editor").expect("sample");
+    std::fs::write(&path, "codex-cli-editor").expect("sample");
 
     assert_eq!(
         sha256_file(Path::new(&path)).expect("hash"),
-        "e0744232290a08ac20392b23ea9aaf95c59657e817aa2840cc064e78f62c3d92"
+        "dc3cc1dc3a962763dae97bbd85dd8da9e19f7da1b2aa59a1b9a01471e845fc15"
     );
 }
 
@@ -97,7 +97,7 @@ fn reports_actionable_error_for_npm_named_launcher_without_package() {
 
     assert!(matches!(
         resolve_candidate(&script),
-        Err(crate::CliEditorError::UnsupportedLauncher(path)) if path == script
+        Err(crate::CodexCliEditorError::UnsupportedLauncher(path)) if path == script
     ));
 }
 
@@ -118,7 +118,7 @@ fn rejects_unsafe_first_path_match_instead_of_skipping_it() {
 
     assert!(matches!(
         discover_native(&options),
-        Err(crate::CliEditorError::UnsafeTarget(path)) if path == first.join("codex.bat")
+        Err(crate::CodexCliEditorError::UnsafeTarget(path)) if path == first.join("codex.bat")
     ));
 }
 
@@ -135,7 +135,7 @@ fn ignores_relative_path_entries() {
     };
     assert!(matches!(
         discover_native(&options),
-        Err(crate::CliEditorError::TargetNotFound(CliKind::Codex))
+        Err(crate::CodexCliEditorError::TargetNotFound(CliKind::Codex))
     ));
 }
 
@@ -156,7 +156,7 @@ fn excludes_current_and_shim_directories() {
     };
     assert!(matches!(
         discover_native(&options),
-        Err(crate::CliEditorError::TargetNotFound(CliKind::Codex))
+        Err(crate::CodexCliEditorError::TargetNotFound(CliKind::Codex))
     ));
 }
 #[test]
@@ -188,7 +188,7 @@ fn probe_output_is_bounded_and_removed() {
             .expect("write oversized output");
         assert!(matches!(
             capture.read(Path::new("oversized.exe")),
-            Err(crate::CliEditorError::VersionProbeFailed(path))
+            Err(crate::CodexCliEditorError::VersionProbeFailed(path))
                 if path == Path::new("oversized.exe")
         ));
     }

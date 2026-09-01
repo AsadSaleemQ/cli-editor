@@ -13,7 +13,7 @@ pub enum CliKind {
 
 #[derive(Debug, Parser)]
 #[command(
-    name = "cli-editor",
+    name = "codex-cli-editor",
     version = concat!(env!("CARGO_PKG_VERSION"), " (unofficial; not affiliated with OpenAI or Microsoft)"),
     about
 )]

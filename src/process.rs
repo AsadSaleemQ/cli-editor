@@ -13,7 +13,7 @@ pub fn run_native(executable: &Path, args: &[OsString]) -> Result<i32> {
     let status = std::process::Command::new(executable)
         .args(args)
         .status()
-        .map_err(|source| crate::CliEditorError::io(executable, source))?;
+        .map_err(|source| crate::CodexCliEditorError::io(executable, source))?;
     Ok(status.code().unwrap_or(1))
 }
 
@@ -31,7 +31,7 @@ fn quote_windows_argument(argument: &OsStr) -> Result<Vec<u16>> {
         .collect();
 
     if units.contains(&0) {
-        return Err(crate::CliEditorError::ArgumentNul);
+        return Err(crate::CodexCliEditorError::ArgumentNul);
     }
     let needs_quotes = units.is_empty()
         || units
@@ -69,7 +69,7 @@ fn build_windows_command_line(executable: &Path, args: &[OsString]) -> Result<Ve
     }
     output.push(0);
     if output.len() > 32_767 {
-        return Err(crate::CliEditorError::CommandLineTooLong);
+        return Err(crate::CodexCliEditorError::CommandLineTooLong);
     }
     Ok(output)
 }
@@ -103,7 +103,7 @@ mod windows {
     };
 
     use super::{OsString, build_windows_command_line};
-    use crate::{CliEditorError, Result};
+    use crate::{CodexCliEditorError, Result};
     pub(super) const CLOSE_HANDLER_WAIT_MS: u32 = 3_000;
     static ACTIVE_CHILD: AtomicPtr<core::ffi::c_void> = AtomicPtr::new(null_mut());
     static ACTIVE_CLOSE_HANDLERS: AtomicUsize = AtomicUsize::new(0);
@@ -177,8 +177,8 @@ mod windows {
         path.to_path_buf()
     }
 
-    fn api_error(api: &'static str) -> CliEditorError {
-        CliEditorError::WindowsApi {
+    fn api_error(api: &'static str) -> CodexCliEditorError {
+        CodexCliEditorError::WindowsApi {
             api,
             source: std::io::Error::last_os_error(),
         }
@@ -187,7 +187,7 @@ mod windows {
     pub(super) fn run_native(executable: &Path, args: &[OsString]) -> Result<i32> {
         let canonical = executable
             .canonicalize()
-            .map_err(|source| CliEditorError::io(executable, source))?;
+            .map_err(|source| CodexCliEditorError::io(executable, source))?;
         let application: Vec<u16> = canonical.as_os_str().encode_wide().chain([0]).collect();
         let argv0 = non_verbatim_argv0(&canonical);
         let mut command_line = build_windows_command_line(&argv0, args)?;
@@ -301,12 +301,12 @@ mod tests {
         let with_nul = OsString::from_wide(&[0x61, 0, 0x62]);
         assert!(matches!(
             quote_windows_argument(&with_nul),
-            Err(crate::CliEditorError::ArgumentNul)
+            Err(crate::CodexCliEditorError::ArgumentNul)
         ));
         let oversized = OsString::from("a".repeat(32_768));
         assert!(matches!(
             build_windows_command_line(Path::new(r"C:\tool.exe"), &[oversized]),
-            Err(crate::CliEditorError::CommandLineTooLong)
+            Err(crate::CodexCliEditorError::CommandLineTooLong)
         ));
     }
 

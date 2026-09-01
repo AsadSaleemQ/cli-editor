@@ -12,7 +12,7 @@ use crate::discovery::{
     DiscoveryOptions, discover_native, probe_release_version, refresh_recorded_target,
     same_package_identity, sha256_file,
 };
-use crate::error::{CliEditorError, Result};
+use crate::error::{CodexCliEditorError, Result};
 use crate::registry::{
     prepend_shim, read_user_path, remove_shim, restore_user_path, write_user_path,
 };
@@ -27,9 +27,9 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
     let store = StateStore::for_current_user()?;
     let current_executable = std::env::current_exe()
         .and_then(|path| path.canonicalize())
-        .map_err(|source| CliEditorError::io("current executable", source))?;
+        .map_err(|source| CodexCliEditorError::io("current executable", source))?;
     if let Some(existing) = store.load()?
-        && is_installed_cli_editor_shim(&existing, &current_executable)
+        && is_installed_codex_cli_editor_shim(&existing, &current_executable)
     {
         println!(
             "Codex CLI Editor is already installed; run the extracted release copy to revalidate or update the installation."
@@ -48,18 +48,18 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         }
     }
     if native_targets.is_empty() {
-        return Err(CliEditorError::NoSupportedCliFound);
+        return Err(CodexCliEditorError::NoSupportedCliFound);
     }
 
     let source_dispatcher = current_executable;
     let source_directory = source_dispatcher
         .parent()
-        .ok_or_else(|| CliEditorError::UnsafeTarget(source_dispatcher.clone()))?;
+        .ok_or_else(|| CodexCliEditorError::UnsafeTarget(source_dispatcher.clone()))?;
     let enhanced_source = source_directory.join("codex-enhanced.exe");
     let helper_source = source_directory.join("codex-code-mode-host.exe");
     let manifest_source = source_directory.join("compatibility-manifest.json");
     let signature_source = source_directory.join("compatibility-manifest.sig");
-    let vscode_extension_source = source_directory.join("cli-editor.vsix");
+    let vscode_extension_source = source_directory.join("codex-cli-editor.vsix");
     let verified = verify_release_bundle(
         source_directory,
         &source_dispatcher,
@@ -70,11 +70,11 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         0,
     )?;
     if !vscode_extension_source.is_file() {
-        return Err(CliEditorError::MissingReleaseArtifact(
+        return Err(CodexCliEditorError::MissingReleaseArtifact(
             vscode_extension_source,
         ));
     }
-    verify_declared_artifact(&verified, "cli-editor.vsix", &vscode_extension_source)?;
+    verify_declared_artifact(&verified, "codex-cli-editor.vsix", &vscode_extension_source)?;
     if let Some(codex) = native_targets.get(&CliKind::Codex) {
         let version = normalized_version(&codex.version);
         if !verified.manifest.supports_codex(version) {
@@ -118,10 +118,10 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         new_install_started.set(true);
 
         std::fs::create_dir_all(&version_directory)
-            .map_err(|source| CliEditorError::io(&version_directory, source))?;
+            .map_err(|source| CodexCliEditorError::io(&version_directory, source))?;
         std::fs::create_dir_all(&shim_directory)
-            .map_err(|source| CliEditorError::io(&shim_directory, source))?;
-        let installed_dispatcher = version_directory.join("cli-editor.exe");
+            .map_err(|source| CodexCliEditorError::io(&shim_directory, source))?;
+        let installed_dispatcher = version_directory.join("codex-cli-editor.exe");
         let enhanced_target = version_directory.join("codex.exe");
         let helper_target = version_directory.join("codex-code-mode-host.exe");
         atomic_copy(&source_dispatcher, &installed_dispatcher)?;
@@ -135,13 +135,15 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
             &signature_source,
             &version_directory.join("compatibility-manifest.sig"),
         )?;
-        verify_declared_artifact(&verified, "cli-editor.exe", &installed_dispatcher)?;
+        verify_declared_artifact(&verified, "codex-cli-editor.exe", &installed_dispatcher)?;
         verify_declared_artifact(&verified, "codex-enhanced.exe", &enhanced_target)?;
         verify_declared_artifact(&verified, "codex-code-mode-host.exe", &helper_target)?;
         let enhanced_version = probe_release_version(&enhanced_target)?;
         let enhanced_version = normalized_version(&enhanced_version).to_owned();
         if !verified.manifest.supports_codex(&enhanced_version) {
-            return Err(CliEditorError::UnsupportedCodexVersion(enhanced_version));
+            return Err(CodexCliEditorError::UnsupportedCodexVersion(
+                enhanced_version,
+            ));
         }
         let compatibility_directory = store.root().join("compatibility");
         let manifest_target = compatibility_directory.join("manifest.json");
@@ -150,7 +152,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         atomic_copy(&signature_source, &signature_target)?;
         atomic_copy(
             &installed_dispatcher,
-            &shim_directory.join("cli-editor.exe"),
+            &shim_directory.join("codex-cli-editor.exe"),
         )?;
         if native_targets.contains_key(&CliKind::Codex) {
             atomic_copy(&installed_dispatcher, &shim_directory.join("codex.exe"))?;
@@ -181,7 +183,7 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         let enhanced_artifact = verified
             .manifest
             .artifact("codex-enhanced.exe")
-            .ok_or_else(|| CliEditorError::ArtifactNotDeclared("codex-enhanced.exe".into()))?;
+            .ok_or_else(|| CodexCliEditorError::ArtifactNotDeclared("codex-enhanced.exe".into()))?;
         let (_, modified_unix_ms) = artifact_metadata(&enhanced_target)?;
         state.active_release = Some(ReleaseRecord {
             version: release_directory_name(verified.manifest.sequence),
@@ -210,11 +212,11 @@ pub(crate) fn install(dry_run: bool) -> Result<()> {
         }
         println!("  shims: {}", shim_directory.display());
         println!(
-            "  run `cli-editor doctor` in a new PowerShell terminal; it reports if a machine-scope command outranks the per-user shim"
+            "  run `codex-cli-editor doctor` in a new PowerShell terminal; it reports if a machine-scope command outranks the per-user shim"
         );
     } else if newer_bundle_available(verified.manifest.sequence, existing_manifest_sequence.get()) {
         println!(
-            "Codex CLI Editor verified a newer release bundle but did not activate it; run `cli-editor update --bundle \"{}\"`.",
+            "Codex CLI Editor verified a newer release bundle but did not activate it; run `codex-cli-editor update --bundle \"{}\"`.",
             source_directory.display()
         );
     } else {
@@ -229,7 +231,7 @@ fn newer_bundle_available(candidate_sequence: u64, installed_sequence: u64) -> b
     candidate_sequence > installed_sequence
 }
 
-fn is_installed_cli_editor_shim(state: &State, current_executable: &Path) -> bool {
+fn is_installed_codex_cli_editor_shim(state: &State, current_executable: &Path) -> bool {
     let Some(shims) = state.shim_directory.as_ref() else {
         return false;
     };
@@ -240,7 +242,7 @@ fn is_installed_cli_editor_shim(state: &State, current_executable: &Path) -> boo
         && current_executable
             .file_name()
             .and_then(|name| name.to_str())
-            .is_some_and(|name| name.eq_ignore_ascii_case("cli-editor.exe"))
+            .is_some_and(|name| name.eq_ignore_ascii_case("codex-cli-editor.exe"))
 }
 
 struct ReleaseBundle {
@@ -256,12 +258,12 @@ impl ReleaseBundle {
     fn from_directory(directory: &Path) -> Result<Self> {
         let directory = directory
             .canonicalize()
-            .map_err(|source| CliEditorError::io(directory, source))?;
+            .map_err(|source| CodexCliEditorError::io(directory, source))?;
         Ok(Self {
-            dispatcher: directory.join("cli-editor.exe"),
+            dispatcher: directory.join("codex-cli-editor.exe"),
             enhanced: directory.join("codex-enhanced.exe"),
             helper: directory.join("codex-code-mode-host.exe"),
-            vscode_extension: directory.join("cli-editor.vsix"),
+            vscode_extension: directory.join("codex-cli-editor.vsix"),
             manifest: directory.join("compatibility-manifest.json"),
             signature: directory.join("compatibility-manifest.sig"),
         })
@@ -276,7 +278,7 @@ pub(crate) fn update(bundle_directory: &Path) -> Result<()> {
     let store = StateStore::for_current_user()?;
     let current_executable = std::env::current_exe()
         .and_then(|path| path.canonicalize())
-        .map_err(|source| CliEditorError::io("current executable", source))?;
+        .map_err(|source| CodexCliEditorError::io("current executable", source))?;
     update_with_store(
         bundle_directory,
         &store,
@@ -294,7 +296,7 @@ fn update_with_store<F>(
 where
     F: Fn(&Path) -> Result<String>,
 {
-    let prepared = store.load()?.ok_or(CliEditorError::NotInstalled)?;
+    let prepared = store.load()?.ok_or(CodexCliEditorError::NotInstalled)?;
     let bundle = ReleaseBundle::from_directory(bundle_directory)?;
     let verified = verify_release_bundle(
         bundle.directory(),
@@ -305,9 +307,9 @@ where
         &bundle.signature,
         prepared.highest_manifest_sequence,
     )?;
-    verify_declared_artifact(&verified, "cli-editor.vsix", &bundle.vscode_extension)?;
+    verify_declared_artifact(&verified, "codex-cli-editor.vsix", &bundle.vscode_extension)?;
     if verified.manifest.sequence <= prepared.highest_manifest_sequence {
-        return Err(CliEditorError::NoUpdateAvailable);
+        return Err(CodexCliEditorError::NoUpdateAvailable);
     }
 
     verify_managed_codex_compatibility(&prepared, &verified.manifest)?;
@@ -315,26 +317,26 @@ where
     let installed_dispatcher = prepared
         .active_release
         .as_ref()
-        .ok_or(CliEditorError::EnhancedUnavailable)?
+        .ok_or(CodexCliEditorError::EnhancedUnavailable)?
         .directory
-        .join("cli-editor.exe");
+        .join("codex-cli-editor.exe");
     let dispatcher_changed =
         sha256_file(&installed_dispatcher)? != sha256_file(&bundle.dispatcher)?;
     let current_executable = current_executable
         .canonicalize()
-        .map_err(|source| CliEditorError::io(current_executable, source))?;
+        .map_err(|source| CodexCliEditorError::io(current_executable, source))?;
     let owned_root = store
         .root()
         .canonicalize()
-        .map_err(|source| CliEditorError::io(store.root(), source))?;
+        .map_err(|source| CodexCliEditorError::io(store.root(), source))?;
     if dispatcher_changed && current_executable.starts_with(&owned_root) {
-        return Err(CliEditorError::ExternalUpdaterRequired);
+        return Err(CodexCliEditorError::ExternalUpdaterRequired);
     }
 
     let release_name = release_directory_name(verified.manifest.sequence);
     let versions_directory = store.root().join("versions");
     std::fs::create_dir_all(&versions_directory)
-        .map_err(|source| CliEditorError::io(&versions_directory, source))?;
+        .map_err(|source| CodexCliEditorError::io(&versions_directory, source))?;
     let unique = format!(
         "{}.staging.{}.{:032x}",
         release_name,
@@ -349,13 +351,16 @@ where
     if final_directory.exists() {
         quarantine_interrupted_release(&versions_directory, &final_directory)?;
     }
-    std::fs::create_dir(&staging).map_err(|source| CliEditorError::io(&staging, source))?;
+    std::fs::create_dir(&staging).map_err(|source| CodexCliEditorError::io(&staging, source))?;
 
     let stage_result = (|| {
-        atomic_copy(&bundle.dispatcher, &staging.join("cli-editor.exe"))?;
+        atomic_copy(&bundle.dispatcher, &staging.join("codex-cli-editor.exe"))?;
         atomic_copy(&bundle.enhanced, &staging.join("codex.exe"))?;
         atomic_copy(&bundle.helper, &staging.join("codex-code-mode-host.exe"))?;
-        atomic_copy(&bundle.vscode_extension, &staging.join("cli-editor.vsix"))?;
+        atomic_copy(
+            &bundle.vscode_extension,
+            &staging.join("codex-cli-editor.vsix"),
+        )?;
         atomic_copy(
             &bundle.manifest,
             &staging.join("compatibility-manifest.json"),
@@ -364,7 +369,11 @@ where
             &bundle.signature,
             &staging.join("compatibility-manifest.sig"),
         )?;
-        verify_declared_artifact(&verified, "cli-editor.exe", &staging.join("cli-editor.exe"))?;
+        verify_declared_artifact(
+            &verified,
+            "codex-cli-editor.exe",
+            &staging.join("codex-cli-editor.exe"),
+        )?;
         verify_declared_artifact(&verified, "codex-enhanced.exe", &staging.join("codex.exe"))?;
         verify_declared_artifact(
             &verified,
@@ -373,10 +382,10 @@ where
         )?;
         verify_declared_artifact(
             &verified,
-            "cli-editor.vsix",
-            &staging.join("cli-editor.vsix"),
+            "codex-cli-editor.vsix",
+            &staging.join("codex-cli-editor.vsix"),
         )?;
-        Ok::<_, CliEditorError>(())
+        Ok::<_, CodexCliEditorError>(())
     })();
     if let Err(error) = stage_result {
         let _ = std::fs::remove_dir_all(&staging);
@@ -393,7 +402,7 @@ where
     let codex_version = normalized_version(&smoke_version).to_owned();
     if !verified.manifest.supports_codex(&codex_version) {
         let _ = std::fs::remove_dir_all(&staging);
-        return Err(CliEditorError::UnsupportedCodexVersion(codex_version));
+        return Err(CodexCliEditorError::UnsupportedCodexVersion(codex_version));
     }
 
     crate::vscode::update_if_owned(&bundle.vscode_extension, prepared.vscode_extension_added)?;
@@ -411,17 +420,17 @@ where
     let expected_install_id = prepared.install_id.clone();
     let expected_sequence = prepared.highest_manifest_sequence;
     let result = store.transaction(|current| {
-        let mut state = current.ok_or(CliEditorError::NotInstalled)?;
+        let mut state = current.ok_or(CodexCliEditorError::NotInstalled)?;
         if state.install_id != expected_install_id
             || state.highest_manifest_sequence != expected_sequence
         {
-            return Err(CliEditorError::StateChangedDuringOperation);
+            return Err(CodexCliEditorError::StateChangedDuringOperation);
         }
         std::fs::rename(&staging, &final_directory)
-            .map_err(|source| CliEditorError::io(&final_directory, source))?;
+            .map_err(|source| CodexCliEditorError::io(&final_directory, source))?;
         activated.replace(true);
         std::fs::create_dir(&rollback_directory)
-            .map_err(|source| CliEditorError::io(&rollback_directory, source))?;
+            .map_err(|source| CodexCliEditorError::io(&rollback_directory, source))?;
 
         let cache_directory = store.root().join("compatibility");
         let manifest_target = cache_directory.join("manifest.json");
@@ -443,14 +452,14 @@ where
             let shims = state
                 .shim_directory
                 .as_ref()
-                .ok_or(CliEditorError::NotInstalled)?;
-            let mut shim_names = vec!["cli-editor.exe"];
+                .ok_or(CodexCliEditorError::NotInstalled)?;
+            let mut shim_names = vec!["codex-cli-editor.exe"];
             if state.native_targets.contains_key(&CliKind::Codex) {
                 shim_names.push("codex.exe");
             }
             for name in shim_names {
                 backup_and_replace(
-                    &final_directory.join("cli-editor.exe"),
+                    &final_directory.join("codex-cli-editor.exe"),
                     &shims.join(name),
                     &rollback_directory,
                     &replacements,
@@ -470,7 +479,7 @@ where
         let enhanced_artifact = verified
             .manifest
             .artifact("codex-enhanced.exe")
-            .ok_or_else(|| CliEditorError::ArtifactNotDeclared("codex-enhanced.exe".into()))?;
+            .ok_or_else(|| CodexCliEditorError::ArtifactNotDeclared("codex-enhanced.exe".into()))?;
         let (_, modified_unix_ms) = artifact_metadata(&enhanced_target)?;
         state.active_release = Some(ReleaseRecord {
             version: release_name,
@@ -511,7 +520,7 @@ fn verify_managed_codex_compatibility(
     };
     let version = normalized_version(&recorded_codex.version);
     if !manifest.supports_codex(version) {
-        return Err(CliEditorError::UnsupportedCodexVersion(version.into()));
+        return Err(CodexCliEditorError::UnsupportedCodexVersion(version.into()));
     }
     Ok(())
 }
@@ -519,7 +528,7 @@ fn quarantine_interrupted_release(versions: &Path, directory: &Path) -> Result<(
     let name = directory
         .file_name()
         .and_then(|name| name.to_str())
-        .ok_or_else(|| CliEditorError::UnsafeTarget(directory.to_path_buf()))?;
+        .ok_or_else(|| CodexCliEditorError::UnsafeTarget(directory.to_path_buf()))?;
     let quarantine = versions.join(format!(
         ".interrupted.{name}.{}.{:032x}",
         std::process::id(),
@@ -529,7 +538,7 @@ fn quarantine_interrupted_release(versions: &Path, directory: &Path) -> Result<(
             .as_nanos()
     ));
     std::fs::rename(directory, &quarantine)
-        .map_err(|source| CliEditorError::io(directory, source))?;
+        .map_err(|source| CodexCliEditorError::io(directory, source))?;
     if let Err(error) = std::fs::remove_dir_all(&quarantine) {
         eprintln!(
             "warning: interrupted update residue remains quarantined at {}: {error}",
@@ -618,21 +627,21 @@ fn rollback_with_store<F>(store: &StateStore, release: Option<&str>, smoke_probe
 where
     F: Fn(&Path) -> Result<String>,
 {
-    let prepared = store.load()?.ok_or(CliEditorError::NotInstalled)?;
+    let prepared = store.load()?.ok_or(CodexCliEditorError::NotInstalled)?;
     let active = prepared
         .active_release
         .as_ref()
-        .ok_or(CliEditorError::EnhancedUnavailable)?;
+        .ok_or(CodexCliEditorError::EnhancedUnavailable)?;
     let active_sequence = prepared
         .manifest_cache
         .as_ref()
-        .ok_or(CliEditorError::EnhancedUnavailable)?
+        .ok_or(CodexCliEditorError::EnhancedUnavailable)?
         .sequence;
     let versions = store.root().join("versions");
     let canonical_active = active
         .directory
         .canonicalize()
-        .map_err(|source| CliEditorError::io(&active.directory, source))?;
+        .map_err(|source| CodexCliEditorError::io(&active.directory, source))?;
     let candidate = select_rollback_candidate(
         &versions,
         &canonical_active,
@@ -655,12 +664,12 @@ where
     let expected_active = active.directory.clone();
     let expected_highest = prepared.highest_manifest_sequence;
     let result = store.transaction(|current| {
-        let mut state = current.ok_or(CliEditorError::NotInstalled)?;
+        let mut state = current.ok_or(CodexCliEditorError::NotInstalled)?;
         if state.install_id != expected_install_id
             || state.highest_manifest_sequence != expected_highest
             || state.active_release.as_ref().map(|item| &item.directory) != Some(&expected_active)
         {
-            return Err(CliEditorError::StateChangedDuringOperation);
+            return Err(CodexCliEditorError::StateChangedDuringOperation);
         }
         let cache_directory = store.root().join("compatibility");
         let manifest_target = cache_directory.join("manifest.json");
@@ -718,23 +727,23 @@ fn select_rollback_candidate(
         if component.components().count() != 1
             || component.file_name().and_then(|name| name.to_str()) != Some(release)
         {
-            return Err(CliEditorError::UnsafeTarget(versions.join(release)));
+            return Err(CodexCliEditorError::UnsafeTarget(versions.join(release)));
         }
         let directory = versions.join(release);
         let canonical_directory = directory
             .canonicalize()
-            .map_err(|source| CliEditorError::io(&directory, source))?;
+            .map_err(|source| CodexCliEditorError::io(&directory, source))?;
         if canonical_directory == active_directory {
-            return Err(CliEditorError::NoRollbackAvailable);
+            return Err(CodexCliEditorError::NoRollbackAvailable);
         }
         return prepare_rollback_candidate(&canonical_directory, highest_sequence, smoke_probe);
     }
 
     let mut candidates = Vec::new();
     for entry in
-        std::fs::read_dir(versions).map_err(|source| CliEditorError::io(versions, source))?
+        std::fs::read_dir(versions).map_err(|source| CodexCliEditorError::io(versions, source))?
     {
-        let entry = entry.map_err(|source| CliEditorError::io(versions, source))?;
+        let entry = entry.map_err(|source| CodexCliEditorError::io(versions, source))?;
         let directory = entry.path();
         if !entry.file_type().is_ok_and(|kind| kind.is_dir()) {
             continue;
@@ -755,7 +764,7 @@ fn select_rollback_candidate(
     candidates
         .into_iter()
         .max_by_key(|candidate| candidate.manifest_sequence)
-        .ok_or(CliEditorError::NoRollbackAvailable)
+        .ok_or(CodexCliEditorError::NoRollbackAvailable)
 }
 
 fn prepare_rollback_candidate(
@@ -765,10 +774,10 @@ fn prepare_rollback_candidate(
 ) -> Result<RollbackCandidate> {
     let directory = directory
         .canonicalize()
-        .map_err(|source| CliEditorError::io(directory, source))?;
+        .map_err(|source| CodexCliEditorError::io(directory, source))?;
     let verified = verify_release_bundle(
         &directory,
-        &directory.join("cli-editor.exe"),
+        &directory.join("codex-cli-editor.exe"),
         &directory.join("codex.exe"),
         &directory.join("codex-code-mode-host.exe"),
         &directory.join("compatibility-manifest.json"),
@@ -776,7 +785,7 @@ fn prepare_rollback_candidate(
         0,
     )?;
     if verified.manifest.sequence > highest_sequence {
-        return Err(CliEditorError::ManifestRollback {
+        return Err(CodexCliEditorError::ManifestRollback {
             highest: highest_sequence,
             received: verified.manifest.sequence,
         });
@@ -784,18 +793,18 @@ fn prepare_rollback_candidate(
     let probed = smoke_probe(&directory.join("codex.exe"))?;
     let codex_version = normalized_version(&probed).to_owned();
     if !verified.manifest.supports_codex(&codex_version) {
-        return Err(CliEditorError::UnsupportedCodexVersion(codex_version));
+        return Err(CodexCliEditorError::UnsupportedCodexVersion(codex_version));
     }
     let release_name = directory
         .file_name()
         .and_then(|name| name.to_str())
-        .ok_or_else(|| CliEditorError::UnsafeTarget(directory.clone()))?
+        .ok_or_else(|| CodexCliEditorError::UnsafeTarget(directory.clone()))?
         .to_owned();
     let codex_path = directory.join("codex.exe");
     let codex_artifact = verified
         .manifest
         .artifact("codex-enhanced.exe")
-        .ok_or_else(|| CliEditorError::ArtifactNotDeclared("codex-enhanced.exe".into()))?;
+        .ok_or_else(|| CodexCliEditorError::ArtifactNotDeclared("codex-enhanced.exe".into()))?;
     let (_, codex_modified_unix_ms) = artifact_metadata(&codex_path)?;
     Ok(RollbackCandidate {
         codex_sha256: codex_artifact.sha256.clone(),
@@ -820,11 +829,12 @@ fn backup_and_replace(
     replacements: &RefCell<Vec<(PathBuf, Option<PathBuf>)>>,
 ) -> Result<()> {
     std::fs::create_dir_all(rollback_directory)
-        .map_err(|source| CliEditorError::io(rollback_directory, source))?;
+        .map_err(|source| CodexCliEditorError::io(rollback_directory, source))?;
     let index = replacements.borrow().len();
     let backup = if target.exists() {
         let backup = rollback_directory.join(index.to_string());
-        std::fs::copy(target, &backup).map_err(|source| CliEditorError::io(&backup, source))?;
+        std::fs::copy(target, &backup)
+            .map_err(|source| CodexCliEditorError::io(&backup, source))?;
         Some(backup)
     } else {
         None
@@ -847,7 +857,7 @@ fn rollback_replacements(replacements: &[(PathBuf, Option<PathBuf>)]) {
 fn artifact_metadata(path: &Path) -> Result<(u64, u128)> {
     let metadata = path
         .metadata()
-        .map_err(|source| CliEditorError::io(path, source))?;
+        .map_err(|source| CodexCliEditorError::io(path, source))?;
     let modified_unix_ms = metadata
         .modified()
         .ok()
@@ -865,40 +875,42 @@ fn verify_release_bundle(
     highest_sequence: u64,
 ) -> Result<VerifiedManifest> {
     if !cfg!(debug_assertions) && release_key_is_development() {
-        return Err(CliEditorError::DevelopmentKeyReleaseBlocked);
+        return Err(CodexCliEditorError::DevelopmentKeyReleaseBlocked);
     }
-    let bytes =
-        std::fs::read(manifest_path).map_err(|source| CliEditorError::io(manifest_path, source))?;
+    let bytes = std::fs::read(manifest_path)
+        .map_err(|source| CodexCliEditorError::io(manifest_path, source))?;
     let signature = std::fs::read_to_string(signature_path)
-        .map_err(|source| CliEditorError::io(signature_path, source))?;
+        .map_err(|source| CodexCliEditorError::io(signature_path, source))?;
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
     let verified = verify_manifest(&bytes, &signature, highest_sequence, now)?;
     if verified.freshness == Freshness::Expired {
-        return Err(CliEditorError::ManifestExpired);
+        return Err(CodexCliEditorError::ManifestExpired);
     }
     if matches!(verified.freshness, Freshness::Grace { .. }) {
         eprintln!("warning: Codex CLI Editor compatibility manifest is stale but within grace");
     }
     let required = semver::Version::parse(&verified.manifest.minimum_dispatcher_version)
-        .map_err(|_| CliEditorError::InvalidManifestWindow)?;
+        .map_err(|_| CodexCliEditorError::InvalidManifestWindow)?;
     let current =
-        semver::Version::parse(VERSION).map_err(|_| CliEditorError::InvalidManifestWindow)?;
+        semver::Version::parse(VERSION).map_err(|_| CodexCliEditorError::InvalidManifestWindow)?;
     if current < required {
-        return Err(CliEditorError::DispatcherTooOld {
+        return Err(CodexCliEditorError::DispatcherTooOld {
             required: required.to_string(),
             current: current.to_string(),
         });
     }
     for (name, path) in [
-        ("cli-editor.exe", dispatcher),
+        ("codex-cli-editor.exe", dispatcher),
         ("codex-enhanced.exe", enhanced),
         ("codex-code-mode-host.exe", helper),
     ] {
         if !path.is_file() {
-            return Err(CliEditorError::MissingReleaseArtifact(path.to_path_buf()));
+            return Err(CodexCliEditorError::MissingReleaseArtifact(
+                path.to_path_buf(),
+            ));
         }
         verify_declared_artifact(&verified, name, path)?;
     }
@@ -910,12 +922,12 @@ fn verify_declared_artifact(verified: &VerifiedManifest, name: &str, path: &Path
     let artifact = verified
         .manifest
         .artifact(name)
-        .ok_or_else(|| CliEditorError::ArtifactNotDeclared(name.into()))?;
+        .ok_or_else(|| CodexCliEditorError::ArtifactNotDeclared(name.into()))?;
     let metadata = path
         .metadata()
-        .map_err(|source| CliEditorError::io(path, source))?;
+        .map_err(|source| CodexCliEditorError::io(path, source))?;
     if metadata.len() != artifact.size || sha256_file(path)? != artifact.sha256 {
-        return Err(CliEditorError::ArtifactVerificationFailed(
+        return Err(CodexCliEditorError::ArtifactVerificationFailed(
             path.to_path_buf(),
         ));
     }
@@ -925,7 +937,7 @@ fn verify_declared_artifact(verified: &VerifiedManifest, name: &str, path: &Path
 pub(crate) fn configure_default(target: crate::cli::DefaultTarget) -> Result<()> {
     let store = StateStore::for_current_user()?;
     store.transaction(|current| {
-        let mut state = current.ok_or(CliEditorError::NotInstalled)?;
+        let mut state = current.ok_or(CodexCliEditorError::NotInstalled)?;
         let _ = target;
         apply_default_selection(&mut state)?;
         Ok((state, ()))
@@ -934,7 +946,7 @@ pub(crate) fn configure_default(target: crate::cli::DefaultTarget) -> Result<()>
 
 fn apply_default_selection(state: &mut State) -> Result<()> {
     if !state.native_targets.contains_key(&CliKind::Codex) {
-        return Err(CliEditorError::TargetNotFound(CliKind::Codex));
+        return Err(CodexCliEditorError::TargetNotFound(CliKind::Codex));
     }
     state.defaults.codex_enhanced = true;
     Ok(())
@@ -943,33 +955,33 @@ fn apply_default_selection(state: &mut State) -> Result<()> {
 pub(crate) fn restore_defaults(target: crate::cli::DefaultTarget) -> Result<()> {
     let store = StateStore::for_current_user()?;
     store.transaction(|current| {
-        let mut state = current.ok_or(CliEditorError::NotInstalled)?;
+        let mut state = current.ok_or(CodexCliEditorError::NotInstalled)?;
         let _ = target;
         state.defaults.codex_enhanced = false;
         Ok((state, ()))
     })
 }
 pub(crate) fn repair(adopt_native: Option<crate::cli::DefaultTarget>) -> Result<()> {
-    let _ = adopt_native.ok_or(CliEditorError::RepairTargetRequired)?;
+    let _ = adopt_native.ok_or(CodexCliEditorError::RepairTargetRequired)?;
     let kind = CliKind::Codex;
     let store = StateStore::for_current_user()?;
-    let prepared = store.load()?.ok_or(CliEditorError::NotInstalled)?;
+    let prepared = store.load()?.ok_or(CodexCliEditorError::NotInstalled)?;
     let shim_directory = prepared
         .shim_directory
         .clone()
-        .ok_or_else(|| CliEditorError::UnsafeTarget(store.root().join("shims")))?;
+        .ok_or_else(|| CodexCliEditorError::UnsafeTarget(store.root().join("shims")))?;
     let expected = prepared.native_targets.get(&kind).cloned();
     let options = DiscoveryOptions::from_environment(shim_directory.clone())?;
     let discovered = discover_native(&options)?;
-    let installed_dispatcher = shim_directory.join("cli-editor.exe");
+    let installed_dispatcher = shim_directory.join("codex-cli-editor.exe");
     let shim_name = "codex.exe";
 
     let was_missing = expected.is_none();
     let shim_target = shim_directory.join(shim_name);
     let result = store.transaction(|current| {
-        let mut state = current.ok_or(CliEditorError::NotInstalled)?;
+        let mut state = current.ok_or(CodexCliEditorError::NotInstalled)?;
         if state.native_targets.get(&kind).cloned() != expected {
-            return Err(CliEditorError::StateChangedDuringOperation);
+            return Err(CodexCliEditorError::StateChangedDuringOperation);
         }
         let changed = adopt_discovered_target(&mut state, kind, discovered);
         if was_missing {
@@ -1006,21 +1018,21 @@ pub(crate) fn adopt_in_place(expected: &crate::NativeTarget) -> Result<crate::Na
         || discovered.package_root != expected.package_root
         || !same_package_identity(&expected.package_identity, &discovered.package_identity)
     {
-        return Err(CliEditorError::TargetChanged(expected.path.clone()));
+        return Err(CodexCliEditorError::TargetChanged(expected.path.clone()));
     }
     let store = StateStore::for_current_user()?;
     let adopted = discovered.clone();
     store.transaction(|current| {
-        let mut state = current.ok_or(CliEditorError::NotInstalled)?;
+        let mut state = current.ok_or(CodexCliEditorError::NotInstalled)?;
         let current_target = state
             .native_targets
             .get(&kind)
-            .ok_or(CliEditorError::TargetNotFound(kind))?;
+            .ok_or(CodexCliEditorError::TargetNotFound(kind))?;
         if current_target != expected {
-            return Err(CliEditorError::StateChangedDuringOperation);
+            return Err(CodexCliEditorError::StateChangedDuringOperation);
         }
         if !adopt_discovered_target(&mut state, kind, discovered) {
-            return Err(CliEditorError::StateChangedDuringOperation);
+            return Err(CodexCliEditorError::StateChangedDuringOperation);
         }
         Ok((state, ()))
     })?;
@@ -1099,7 +1111,7 @@ fn remove_owned_shims(shims: &Path) {
 
 fn remove_owned_shims_with(shims: &Path, mut remove: impl FnMut(&Path) -> Result<()>) {
     let mut deferred = false;
-    for name in ["cli-editor.exe", "codex.exe"] {
+    for name in ["codex-cli-editor.exe", "codex.exe"] {
         if remove(&shims.join(name)).is_err() {
             deferred = true;
         }
@@ -1136,14 +1148,15 @@ fn restore_managed_user_path(
 fn cleanup_owned_root(root: &Path) -> Result<()> {
     let expected = std::env::var_os("LOCALAPPDATA")
         .map(std::path::PathBuf::from)
-        .ok_or(CliEditorError::StateDirectoryUnavailable)?
-        .join("CLIEditor");
+        .ok_or(CodexCliEditorError::StateDirectoryUnavailable)?
+        .join("CodexCLIEditor");
     cleanup_owned_root_at(root, &expected)
 }
 
 fn cleanup_owned_root_at(root: &Path, expected: &Path) -> Result<()> {
-    if root != expected || root.file_name().and_then(|name| name.to_str()) != Some("CLIEditor") {
-        return Err(CliEditorError::UnsafeTarget(root.to_path_buf()));
+    if root != expected || root.file_name().and_then(|name| name.to_str()) != Some("CodexCLIEditor")
+    {
+        return Err(CodexCliEditorError::UnsafeTarget(root.to_path_buf()));
     }
     if !root.exists() {
         return Ok(());
@@ -1218,13 +1231,13 @@ fn collect_owned_entries(
     files: &mut Vec<std::path::PathBuf>,
 ) -> Result<()> {
     for entry in
-        std::fs::read_dir(directory).map_err(|source| CliEditorError::io(directory, source))?
+        std::fs::read_dir(directory).map_err(|source| CodexCliEditorError::io(directory, source))?
     {
-        let entry = entry.map_err(|source| CliEditorError::io(directory, source))?;
+        let entry = entry.map_err(|source| CodexCliEditorError::io(directory, source))?;
         let path = entry.path();
         let kind = entry
             .file_type()
-            .map_err(|source| CliEditorError::io(&path, source))?;
+            .map_err(|source| CodexCliEditorError::io(&path, source))?;
         if kind.is_dir() && !kind.is_symlink() {
             ensure_not_reparse(&path)?;
             collect_owned_entries(&path, directories, files)?;
@@ -1240,7 +1253,7 @@ fn remove_or_defer(path: &Path) -> Result<()> {
         Ok(()) => Ok(()),
         Err(source) if source.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(source) if matches!(source.raw_os_error(), Some(5 | 32)) => defer_delete(path),
-        Err(source) => Err(CliEditorError::io(path, source)),
+        Err(source) => Err(CodexCliEditorError::io(path, source)),
     }
 }
 
@@ -1258,7 +1271,7 @@ fn defer_delete(path: &Path) -> Result<()> {
 
     let parent = path
         .parent()
-        .ok_or_else(|| CliEditorError::UnsafeTarget(path.to_path_buf()))?;
+        .ok_or_else(|| CodexCliEditorError::UnsafeTarget(path.to_path_buf()))?;
     let pending = parent.join(format!(
         ".pending-delete.{}.{}.exe",
         std::process::id(),
@@ -1281,7 +1294,7 @@ fn defer_delete(path: &Path) -> Result<()> {
         let rename_error = std::io::Error::last_os_error();
         // SAFETY: source_wide is NUL terminated and a null destination requests deferred deletion.
         if unsafe { MoveFileExW(source_wide.as_ptr(), null(), MOVEFILE_DELAY_UNTIL_REBOOT) } == 0 {
-            return Err(CliEditorError::io(path, rename_error));
+            return Err(CodexCliEditorError::io(path, rename_error));
         }
         return Ok(());
     }
@@ -1356,7 +1369,7 @@ fn posix_delete(path: &Path) -> std::io::Result<()> {
 
 #[cfg(not(windows))]
 fn defer_delete(path: &Path) -> Result<()> {
-    Err(CliEditorError::io(
+    Err(CodexCliEditorError::io(
         path,
         std::io::Error::new(std::io::ErrorKind::PermissionDenied, "file is in use"),
     ))
@@ -1364,17 +1377,17 @@ fn defer_delete(path: &Path) -> Result<()> {
 fn atomic_copy(source: &Path, target: &Path) -> Result<()> {
     let parent = target
         .parent()
-        .ok_or_else(|| CliEditorError::UnsafeTarget(target.to_path_buf()))?;
-    std::fs::create_dir_all(parent).map_err(|source| CliEditorError::io(parent, source))?;
+        .ok_or_else(|| CodexCliEditorError::UnsafeTarget(target.to_path_buf()))?;
+    std::fs::create_dir_all(parent).map_err(|source| CodexCliEditorError::io(parent, source))?;
     let temp = parent.join(format!(
         ".{}.{}.tmp",
         target.file_name().unwrap_or_default().to_string_lossy(),
         std::process::id()
     ));
     if temp.exists() {
-        std::fs::remove_file(&temp).map_err(|source| CliEditorError::io(&temp, source))?;
+        std::fs::remove_file(&temp).map_err(|source| CodexCliEditorError::io(&temp, source))?;
     }
-    std::fs::copy(source, &temp).map_err(|source| CliEditorError::io(&temp, source))?;
+    std::fs::copy(source, &temp).map_err(|source| CodexCliEditorError::io(&temp, source))?;
     replace_file(&temp, target).inspect_err(|_| {
         let _ = std::fs::remove_file(&temp);
     })
@@ -1398,7 +1411,7 @@ mod tests {
             value_type: 2,
             data: units.into_iter().flat_map(u16::to_le_bytes).collect(),
         };
-        let bytes = prepend_shim(&snapshot, Path::new(r"C:\CLIEditor\shims")).unwrap();
+        let bytes = prepend_shim(&snapshot, Path::new(r"C:\CodexCLIEditor\shims")).unwrap();
         let units: Vec<u16> = bytes
             .chunks_exact(2)
             .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
@@ -1406,13 +1419,13 @@ mod tests {
             .collect();
         assert_eq!(
             String::from_utf16(&units).unwrap(),
-            r"C:\CLIEditor\shims;%USERPROFILE%\bin;C:\Tools"
+            r"C:\CodexCLIEditor\shims;%USERPROFILE%\bin;C:\Tools"
         );
     }
 
     #[test]
     fn removes_only_the_owned_shim_from_a_changed_user_path() {
-        let units: Vec<u16> = r"C:\Other;C:\CLIEditor\shims;C:\Later"
+        let units: Vec<u16> = r"C:\Other;C:\CodexCLIEditor\shims;C:\Later"
             .encode_utf16()
             .chain([0])
             .collect();
@@ -1422,7 +1435,7 @@ mod tests {
             data: units.into_iter().flat_map(u16::to_le_bytes).collect(),
         };
         let bytes =
-            crate::registry::remove_shim(&snapshot, Path::new(r"C:\CLIEditor\shims")).unwrap();
+            crate::registry::remove_shim(&snapshot, Path::new(r"C:\CodexCLIEditor\shims")).unwrap();
         let units: Vec<u16> = bytes
             .chunks_exact(2)
             .map(|pair| u16::from_le_bytes([pair[0], pair[1]]))
@@ -1462,7 +1475,7 @@ mod tests {
             .insert(crate::CliKind::Codex, target("0.148.0", "codex"));
         assert!(matches!(
             super::verify_managed_codex_compatibility(&state, &manifest),
-            Err(crate::CliEditorError::UnsupportedCodexVersion(version))
+            Err(crate::CodexCliEditorError::UnsupportedCodexVersion(version))
                 if version == "0.148.0"
         ));
     }
@@ -1474,21 +1487,21 @@ mod tests {
     }
 
     #[test]
-    fn install_recognizes_the_installed_cli_editor_shim() {
+    fn install_recognizes_the_installed_codex_cli_editor_shim() {
         let directory = crate::test_support::TempDir::new();
         let shims = directory.path().join("shims");
         std::fs::create_dir(&shims).unwrap();
-        let editor = shims.join("cli-editor.exe");
+        let editor = shims.join("codex-cli-editor.exe");
         std::fs::write(&editor, b"shim").unwrap();
         let shims = shims.canonicalize().unwrap();
         let editor = editor.canonicalize().unwrap();
         let mut state = crate::State::new("0.1.0");
         state.shim_directory = Some(shims);
 
-        assert!(super::is_installed_cli_editor_shim(&state, &editor));
-        assert!(!super::is_installed_cli_editor_shim(
+        assert!(super::is_installed_codex_cli_editor_shim(&state, &editor));
+        assert!(!super::is_installed_codex_cli_editor_shim(
             &state,
-            &directory.path().join("external-cli-editor.exe")
+            &directory.path().join("external-codex-cli-editor.exe")
         ));
     }
 
@@ -1500,7 +1513,7 @@ mod tests {
 
         super::remove_owned_shims_with(&shims, |path| {
             attempted.push(path.to_path_buf());
-            Err(crate::CliEditorError::io(
+            Err(crate::CodexCliEditorError::io(
                 path,
                 std::io::Error::new(std::io::ErrorKind::PermissionDenied, "in use"),
             ))
@@ -1508,7 +1521,7 @@ mod tests {
 
         assert_eq!(
             attempted,
-            ["cli-editor.exe", "codex.exe"].map(|name| shims.join(name))
+            ["codex-cli-editor.exe", "codex.exe"].map(|name| shims.join(name))
         );
     }
 
@@ -1527,7 +1540,7 @@ mod tests {
     #[cfg(windows)]
     #[test]
     fn in_use_delete_removes_the_running_executable_from_its_command_path() {
-        const CHILD_MARKER_ENV: &str = "CLI_EDITOR_POSIX_DELETE_CHILD_MARKER";
+        const CHILD_MARKER_ENV: &str = "CODEX_CLI_EDITOR_POSIX_DELETE_CHILD_MARKER";
         if let Some(marker) = std::env::var_os(CHILD_MARKER_ENV) {
             std::fs::write(marker, b"ready").unwrap();
             std::thread::sleep(std::time::Duration::from_secs(2));
@@ -1571,7 +1584,7 @@ mod tests {
     #[test]
     fn cleanup_only_removes_the_exact_owned_root() {
         let directory = crate::test_support::TempDir::new();
-        let root = directory.path().join("CLIEditor");
+        let root = directory.path().join("CodexCLIEditor");
         let versions = root.join("versions");
         let logs = root.join("logs");
         std::fs::create_dir_all(&versions).unwrap();
@@ -1581,10 +1594,10 @@ mod tests {
 
         super::cleanup_owned_root_at(&root, &root).unwrap();
         assert!(!root.exists());
-        let wrong = directory.path().join("NotCLIEditor");
+        let wrong = directory.path().join("NotCodexCLIEditor");
         assert!(matches!(
             super::cleanup_owned_root_at(&wrong, &root),
-            Err(crate::CliEditorError::UnsafeTarget(path)) if path == wrong
+            Err(crate::CodexCliEditorError::UnsafeTarget(path)) if path == wrong
         ));
     }
 
@@ -1607,7 +1620,9 @@ mod tests {
         let mut state = crate::State::new("0.1.0");
         assert!(matches!(
             super::apply_default_selection(&mut state),
-            Err(crate::CliEditorError::TargetNotFound(crate::CliKind::Codex))
+            Err(crate::CodexCliEditorError::TargetNotFound(
+                crate::CliKind::Codex
+            ))
         ));
 
         state
@@ -1656,19 +1671,19 @@ mod tests {
         use crate::discovery::sha256_file;
 
         let directory = crate::test_support::TempDir::new();
-        let dispatcher = directory.path().join("cli-editor.exe");
+        let dispatcher = directory.path().join("codex-cli-editor.exe");
         let enhanced = directory.path().join("codex-enhanced.exe");
         let helper = directory.path().join("codex-code-mode-host.exe");
-        let vscode_extension = directory.path().join("cli-editor.vsix");
+        let vscode_extension = directory.path().join("codex-cli-editor.vsix");
         std::fs::write(&dispatcher, b"dispatcher").unwrap();
         std::fs::write(&enhanced, b"enhanced").unwrap();
         std::fs::write(&helper, b"helper").unwrap();
         std::fs::write(&vscode_extension, b"vsix").unwrap();
         let artifacts = [
-            ("cli-editor.exe", &dispatcher),
+            ("codex-cli-editor.exe", &dispatcher),
             ("codex-enhanced.exe", &enhanced),
             ("codex-code-mode-host.exe", &helper),
-            ("cli-editor.vsix", &vscode_extension),
+            ("codex-cli-editor.vsix", &vscode_extension),
         ]
         .into_iter()
         .map(|(name, path)| Artifact {
@@ -1725,7 +1740,7 @@ mod tests {
                 &signature_path,
                 6,
             ),
-            Err(crate::CliEditorError::ArtifactVerificationFailed(path)) if path == enhanced
+            Err(crate::CodexCliEditorError::ArtifactVerificationFailed(path)) if path == enhanced
         ));
     }
 
@@ -1744,9 +1759,9 @@ mod tests {
         std::fs::create_dir_all(&old_release).unwrap();
         std::fs::create_dir_all(&shims).unwrap();
         let current = std::env::current_exe().unwrap().canonicalize().unwrap();
-        std::fs::copy(&current, old_release.join("cli-editor.exe")).unwrap();
+        std::fs::copy(&current, old_release.join("codex-cli-editor.exe")).unwrap();
         std::fs::write(old_release.join("codex.exe"), b"old enhanced").unwrap();
-        for name in ["cli-editor.exe", "codex.exe"] {
+        for name in ["codex-cli-editor.exe", "codex.exe"] {
             std::fs::copy(&current, shims.join(name)).unwrap();
         }
         let compatibility = store.root().join("compatibility");
@@ -1780,10 +1795,10 @@ mod tests {
 
         let bundle = directory.path().join("bundle");
         std::fs::create_dir(&bundle).unwrap();
-        let dispatcher = bundle.join("cli-editor.exe");
+        let dispatcher = bundle.join("codex-cli-editor.exe");
         let enhanced = bundle.join("codex-enhanced.exe");
         let helper = bundle.join("codex-code-mode-host.exe");
-        let vscode_extension = bundle.join("cli-editor.vsix");
+        let vscode_extension = bundle.join("codex-cli-editor.vsix");
         std::fs::copy(&current, &dispatcher).unwrap();
         std::fs::copy(&current, &enhanced).unwrap();
         std::fs::write(&helper, b"helper").unwrap();
@@ -1797,10 +1812,10 @@ mod tests {
         store.save(&state).unwrap();
 
         let artifacts = [
-            ("cli-editor.exe", &dispatcher),
+            ("codex-cli-editor.exe", &dispatcher),
             ("codex-enhanced.exe", &enhanced),
             ("codex-code-mode-host.exe", &helper),
-            ("cli-editor.vsix", &vscode_extension),
+            ("codex-cli-editor.vsix", &vscode_extension),
         ]
         .into_iter()
         .map(|(name, path)| Artifact {
@@ -1875,11 +1890,18 @@ mod tests {
 
         let rollback_release = store.root().join("versions").join("rollback-release");
         std::fs::create_dir(&rollback_release).unwrap();
-        for name in ["cli-editor.exe", "codex.exe", "codex-code-mode-host.exe"] {
+        for name in [
+            "codex-cli-editor.exe",
+            "codex.exe",
+            "codex-code-mode-host.exe",
+        ] {
             std::fs::copy(&current, rollback_release.join(name)).unwrap();
         }
         let rollback_artifacts = [
-            ("cli-editor.exe", rollback_release.join("cli-editor.exe")),
+            (
+                "codex-cli-editor.exe",
+                rollback_release.join("codex-cli-editor.exe"),
+            ),
             ("codex-enhanced.exe", rollback_release.join("codex.exe")),
             (
                 "codex-code-mode-host.exe",

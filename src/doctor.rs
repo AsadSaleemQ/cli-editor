@@ -138,7 +138,7 @@ pub(crate) fn doctor(json: bool) -> Result<i32> {
         });
     }
     if let Some(shim) = &state.shim_directory {
-        let mut expected_shims = vec![("cli-editor", "cli-editor.exe")];
+        let mut expected_shims = vec![("codex-cli-editor", "codex-cli-editor.exe")];
         if state.native_targets.contains_key(&CliKind::Codex) {
             expected_shims.push(("codex", "codex.exe"));
         }
@@ -149,7 +149,7 @@ pub(crate) fn doctor(json: bool) -> Result<i32> {
                 ok: path.is_file(),
                 detail: path.display().to_string(),
             });
-            if command != "cli-editor" {
+            if command != "codex-cli-editor" {
                 let expected = path.canonicalize().ok();
                 let resolved = first_command_path(command);
                 checks.push(Check {

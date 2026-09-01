@@ -1,3 +1,13 @@
+# Codex CLI Editor v0.2.0
+
+Codex CLI Editor now uses one identity across every public and technical surface.
+
+## Unified identity
+
+- Renamed the repository, crate, executable, release tags and assets to `codex-cli-editor`.
+- Renamed the VS Code extension to `asadsaleemq.codex-cli-editor` version 0.4.0 and its commands to `codexCliEditor.*`.
+- Renamed the per-user state directory to `%LOCALAPPDATA%\CodexCLIEditor` and removed the old compatibility command alias.
+
 # Codex CLI Editor v0.1.4
 
 Codex CLI Editor is the final product identity for the enhanced Codex launcher, signed runtime, and VS Code extension.
@@ -6,13 +16,13 @@ Codex CLI Editor is the final product identity for the enhanced Codex launcher, 
 
 - Applies **Codex CLI Editor** consistently across the CLI, VS Code user interface, release titles, documentation, licensing reports, diagnostics, and security statements.
 - Supports Codex CLI exclusively. Discovery, shimming, routing, compatibility manifests, diagnostics, and updates are all Codex-specific.
-- Keeps the stable `cli-editor` executable, `asadsaleemq.cli-editor` extension ID, `cliEditor.*` command IDs, and `AsadSaleemQ/cli-editor` repository slug for safe upgrades.
+- Keeps the stable `codex-cli-editor` executable, `asadsaleemq.codex-cli-editor` extension ID, `codexCliEditor.*` command IDs, and `AsadSaleemQ/codex-cli-editor` repository slug for safe upgrades.
 
 ## Extension 0.3.3
 
 - Presents **Codex CLI Editor** in the Extensions view and Command Palette.
 - Restricts prompt navigation and Smart Paste to matching live enhanced-Codex sessions.
-- Keeps `terminalSmartPaste.paste` as a hidden compatibility alias while `cliEditor.smartPaste` remains canonical.
+- Uses `codexCliEditor.smartPaste` as the Smart Paste command.
 - Performs no startup polling, telemetry, or network activity.
 
 ## Codex CLI Editor v0.1.3

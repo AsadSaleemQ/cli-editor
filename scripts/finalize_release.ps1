@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $root = if ($RepositoryRoot) { [IO.Path]::GetFullPath($RepositoryRoot) } else { [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..')) }
 $artifacts = Join-Path $root '.artifacts'
-$bundle = Join-Path $artifacts "cli-editor-$Version-windows-x64"
+$bundle = Join-Path $artifacts "codex-cli-editor-$Version-windows-x64"
 $archive = "$bundle.zip"
 $manifestPath = Join-Path $bundle 'compatibility-manifest.json'
 $signaturePath = Join-Path $bundle 'compatibility-manifest.sig'
@@ -51,7 +51,7 @@ function New-DeterministicZip([string] $SourceDirectory, [string] $Destination, 
     finally { $stream.Dispose() }
 }
 
-if (-not $env:CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX) { throw 'CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX is required' }
+if (-not $env:CODEX_CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX) { throw 'CODEX_CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX is required' }
 foreach ($required in @($bundle, $manifestPath, $signer)) {
     if (-not (Test-Path -LiteralPath $required)) { throw "Unsigned release input is missing: $required" }
 }
@@ -69,10 +69,10 @@ if ([uint64]$manifest.sequence -ne $ManifestSequence) { throw 'manifest sequence
 if ([uint64]$manifest.expires_unix -ne $ExpiresUnix) { throw 'manifest expiry does not match the prepared release expiry' }
 if ($ExpiresUnix -le $IssuedUnix) { throw 'manifest expiry must follow its issue timestamp' }
 $artifactPaths = @{
-    'cli-editor.exe' = Join-Path $bundle 'cli-editor.exe'
+    'codex-cli-editor.exe' = Join-Path $bundle 'codex-cli-editor.exe'
     'codex-enhanced.exe' = Join-Path $bundle 'codex-enhanced.exe'
     'codex-code-mode-host.exe' = Join-Path $bundle 'codex-code-mode-host.exe'
-    'cli-editor.vsix' = Join-Path $bundle 'cli-editor.vsix'
+    'codex-cli-editor.vsix' = Join-Path $bundle 'codex-cli-editor.vsix'
 }
 $expectedArtifactNames = @($artifactPaths.Keys | Sort-Object)
 $actualArtifactNames = @($manifest.artifacts | ForEach-Object { [string]$_.name } | Sort-Object)
@@ -93,10 +93,10 @@ $expectedKey = ([IO.File]::ReadAllText((Join-Path $root 'compatibility\public-ke
 $actualKey = ([IO.File]::ReadAllText($generatedPublicKey)).Trim()
 if ($actualKey -ne $expectedKey) { throw 'signing key does not match the embedded release public key' }
 $requiredBundleFiles = @(
-    'cli-editor.exe', 'codex-enhanced.exe', 'codex-code-mode-host.exe', 'cli-editor.vsix',
+    'codex-cli-editor.exe', 'codex-enhanced.exe', 'codex-code-mode-host.exe', 'codex-cli-editor.vsix',
     'compatibility-manifest.json', 'compatibility-manifest.sig',
     'LICENSE', 'NOTICE', 'THIRD_PARTY_NOTICES.md',
-    'THIRD_PARTY_LICENSES_CLI_EDITOR.html', 'THIRD_PARTY_LICENSES_CODEX.html'
+    'THIRD_PARTY_LICENSES_CODEX_CLI_EDITOR.html', 'THIRD_PARTY_LICENSES_CODEX.html'
 )
 $actualBundleFiles = @(Get-ChildItem -LiteralPath $bundle -File | ForEach-Object Name)
 $missing = @($requiredBundleFiles | Where-Object { $_ -notin $actualBundleFiles })
@@ -106,7 +106,7 @@ if ($unexpected.Count -ne 0) { throw "signed release bundle has unexpected files
 New-DeterministicZip -SourceDirectory $bundle -Destination $archive -TimestampUnix $IssuedUnix
 $archiveHash = Get-Sha256 $archive
 [IO.File]::WriteAllText("$archive.sha256", "$archiveHash  $([IO.Path]::GetFileName($archive))`n", (New-Object Text.UTF8Encoding($false)))
-$expectedArtifactEntries = @([IO.Path]::GetFileName($bundle), 'release-tools', 'public-key.generated.hex', "cli-editor-$Version.sbom.json", "cli-editor-$Version-source.zip", [IO.Path]::GetFileName($archive), [IO.Path]::GetFileName("$archive.sha256"))
+$expectedArtifactEntries = @([IO.Path]::GetFileName($bundle), 'release-tools', 'public-key.generated.hex', "codex-cli-editor-$Version.sbom.json", "codex-cli-editor-$Version-source.zip", [IO.Path]::GetFileName($archive), [IO.Path]::GetFileName("$archive.sha256"))
 $actualArtifactEntries = @(Get-ChildItem -LiteralPath $artifacts | ForEach-Object Name)
 $artifactInventoryDelta = @($expectedArtifactEntries | Where-Object { $_ -notin $actualArtifactEntries }) + @($actualArtifactEntries | Where-Object { $_ -notin $expectedArtifactEntries })
 if ($artifactInventoryDelta.Count -ne 0) { throw "Signed artifact inventory mismatch: $($artifactInventoryDelta -join ', ')" }

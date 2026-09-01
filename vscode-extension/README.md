@@ -2,7 +2,7 @@
 
 Codex CLI Editor turns Codex terminals into chat-style editors with smart clipboard paste and familiar shortcuts.
 
-Codex CLI Editor combines the VS Code extension in this package with an enhanced Codex CLI build from the [Codex CLI Editor GitHub repository](https://github.com/AsadSaleemQ/cli-editor). The extension activates its prompt shortcuts and Smart Paste behavior only for a matching live enhanced-Codex session. Every other terminal keeps normal VS Code behavior.
+Codex CLI Editor combines the VS Code extension in this package with an enhanced Codex CLI build from the [Codex CLI Editor GitHub repository](https://github.com/AsadSaleemQ/codex-cli-editor). The extension activates its prompt shortcuts and Smart Paste behavior only for a matching live enhanced-Codex session. Every other terminal keeps normal VS Code behavior.
 
 ## Keyboard shortcuts
 
@@ -37,8 +37,7 @@ Codex CLI Editor combines the VS Code extension in this package with an enhanced
 
 | Item | Runtime behavior |
 |---|---|
-| Public commands | `cliEditor.promptHome`, `cliEditor.promptEnd`, `cliEditor.smartPaste` |
-| Compatibility alias | `terminalSmartPaste.paste` remains registered for existing keybindings but is hidden from the Command Palette. |
+| Public commands | `codexCliEditor.promptHome`, `codexCliEditor.promptEnd`, `codexCliEditor.smartPaste` |
 | Activation | Lazy `onCommand` activation when one of the four registered command IDs is invoked—normally by `Ctrl+Home`, `Ctrl+End`, or `Ctrl+V` while a terminal has focus. |
 | Prompt navigation | Sends fixed xterm Ctrl+Home / Ctrl+End sequences only when a matching live enhanced-Codex prompt owns input; otherwise uses VS Code's terminal-history commands. |
 | Smart Paste | Runs only for a matching live enhanced-Codex session. Non-empty text uses VS Code terminal paste; otherwise the extension forwards `Ctrl+V` for Codex image paste. Other terminals use normal VS Code paste. |
@@ -55,4 +54,4 @@ Codex CLI Editor combines the VS Code extension in this package with an enhanced
 
 ## Install the complete product
 
-Download the latest Windows release from [GitHub Releases](https://github.com/AsadSaleemQ/cli-editor/releases). The signed bundle installs the enhanced Codex build, launcher, and this extension as one reversible product.
+Download the latest Windows release from [GitHub Releases](https://github.com/AsadSaleemQ/codex-cli-editor/releases). The signed bundle installs the enhanced Codex build, launcher, and this extension as one reversible product.

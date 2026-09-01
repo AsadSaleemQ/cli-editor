@@ -104,8 +104,7 @@ function fakeIo(records) {
   const keybindingCommands = manifest.contributes.keybindings.map(({ command }) => command);
   assert.deepStrictEqual(registeredCommands.sort(), activationCommands.sort());
   assert.deepStrictEqual(keybindingCommands.sort(), contributedCommands.sort());
-  assert.ok(registeredCommands.includes('terminalSmartPaste.paste'));
-  assert.ok(!contributedCommands.includes('terminalSmartPaste.paste'));
+  assert.ok(registeredCommands.includes('codexCliEditor.smartPaste'));
   console.log('VS Code bridge tests passed');
 })().catch((error) => {
   console.error(error);

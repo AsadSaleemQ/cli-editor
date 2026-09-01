@@ -2410,7 +2410,7 @@ index 0000000000000000000000000000000000000000..858b61649f532ee7f4c8e967f1f0d349
 +            return None;
 +        }
 +        let root = PathBuf::from(std::env::var_os("LOCALAPPDATA")?)
-+            .join("CLIEditor")
++            .join("CodexCLIEditor")
 +            .join("vscode-bridge");
 +        std::fs::create_dir_all(&root).ok()?;
 +        Some(root.join(format!("{}.json", std::process::id())))

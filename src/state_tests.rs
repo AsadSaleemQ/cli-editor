@@ -7,8 +7,8 @@ use super::AdoptionRecord;
 use super::ReleaseRecord;
 use super::State;
 use super::StateStore;
-use crate::CliEditorError;
 use crate::CliKind;
+use crate::CodexCliEditorError;
 
 #[test]
 fn state_round_trips_and_keeps_backup() {
@@ -51,7 +51,7 @@ fn state_lock_times_out_while_held() {
     let error = store
         .lock(Duration::from_millis(20))
         .expect_err("second lock should time out");
-    assert!(matches!(error, CliEditorError::LockTimeout));
+    assert!(matches!(error, CodexCliEditorError::LockTimeout));
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn rejects_unsupported_schema_version() {
     state.schema_version = 99;
     assert!(matches!(
         state.validate(),
-        Err(crate::CliEditorError::UnsupportedStateSchema {
+        Err(crate::CodexCliEditorError::UnsupportedStateSchema {
             expected: 1,
             found: 99
         })
@@ -117,20 +117,20 @@ fn serializes_cli_kind_map_keys_and_manifest_cache() {
 #[test]
 fn rejects_tampered_owned_paths() {
     let temp = crate::test_support::TempDir::new();
-    let store = StateStore::new(temp.path().join("CLIEditor"));
+    let store = StateStore::new(temp.path().join("CodexCLIEditor"));
 
     let mut state = State::new("0.1.0");
     state.shim_directory = Some(temp.path().join("outside-shims"));
     assert!(matches!(
         store.save(&state),
-        Err(CliEditorError::UnsafeTarget(path)) if path == temp.path().join("outside-shims")
+        Err(CodexCliEditorError::UnsafeTarget(path)) if path == temp.path().join("outside-shims")
     ));
 
     let mut state = State::new("0.1.0");
     state.path_entry_added = true;
     assert!(matches!(
         store.save(&state),
-        Err(CliEditorError::UnsafeTarget(path)) if path == store.root().join("shims")
+        Err(CodexCliEditorError::UnsafeTarget(path)) if path == store.root().join("shims")
     ));
 
     let mut state = State::new("0.1.0");
@@ -144,7 +144,7 @@ fn rejects_tampered_owned_paths() {
     });
     assert!(matches!(
         store.save(&state),
-        Err(CliEditorError::UnsafeTarget(path)) if path == temp.path().join("outside-release")
+        Err(CodexCliEditorError::UnsafeTarget(path)) if path == temp.path().join("outside-release")
     ));
 
     let mut state = State::new("0.1.0");
@@ -156,7 +156,7 @@ fn rejects_tampered_owned_paths() {
     });
     assert!(matches!(
         store.save(&state),
-        Err(CliEditorError::UnsafeTarget(path)) if path == temp.path().join("outside-manifest.json")
+        Err(CodexCliEditorError::UnsafeTarget(path)) if path == temp.path().join("outside-manifest.json")
     ));
 }
 #[cfg(windows)]
@@ -183,6 +183,6 @@ fn rejects_reparse_point_owned_directory() {
     std::fs::remove_dir(&link).expect("remove junction without traversing it");
     assert!(matches!(
         result,
-        Err(CliEditorError::UnsafeTarget(path)) if path == link
+        Err(CodexCliEditorError::UnsafeTarget(path)) if path == link
     ));
 }

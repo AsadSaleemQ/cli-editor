@@ -4,9 +4,9 @@
 
 Click to place the cursor, select with the mouse or keyboard, copy and cut, paste text or images, undo and redo, and navigate long drafts like a desktop chat composer.
 
-One repository ships the complete Codex-only product: an enhanced Codex build, the `cli-editor` launcher, and the `asadsaleemq.cli-editor` VS Code extension. Codex CLI Editor supports Codex CLI exclusively and does not manage any other command-line assistant.
+One repository ships the complete Codex-only product: an enhanced Codex build, the `codex-cli-editor` launcher, and the `asadsaleemq.codex-cli-editor` VS Code extension. Codex CLI Editor supports Codex CLI exclusively and does not manage any other command-line assistant.
 
-**Codex CLI Editor** is the final public product name. The executable name `cli-editor`, extension identifier `asadsaleemq.cli-editor`, repository slug `AsadSaleemQ/cli-editor`, command IDs, and `%LOCALAPPDATA%\CLIEditor` directory remain stable machine identifiers so installed copies continue to update safely.
+**Codex CLI Editor** is the product and technical identity everywhere. Machine-readable locations use the equivalent slug or identifier forms: `codex-cli-editor`, `asadsaleemq.codex-cli-editor`, `codexCliEditor.*`, and `%LOCALAPPDATA%\CodexCLIEditor`.
 
 ## Chat-style controls
 
@@ -44,7 +44,7 @@ One repository ships the complete Codex-only product: an enhanced Codex build, t
 
 ### Launcher and CLI integration
 
-- Run enhanced Codex explicitly with `codex cli-editor` or make it the default.
+- Run enhanced Codex explicitly with `codex codex-cli-editor` or make it the default.
 - Forward arguments, console-control events, exit codes, and process cleanup without shell-wrapper ambiguity.
 - Inspect installation health with human-readable or JSON diagnostics.
 - Adopt legitimate in-place native CLI updates while rejecting relocation or identity drift.
@@ -61,10 +61,10 @@ See the [desktop composer guide](docs/DESKTOP_COMPOSER_BEHAVIOR.md) for the comp
 
 ## Install
 
-Download the latest Windows x64 ZIP and adjacent `.sha256` file from [GitHub Releases](https://github.com/AsadSaleemQ/cli-editor/releases), verify the checksum, extract the archive, and run:
+Download the latest Windows x64 ZIP and adjacent `.sha256` file from [GitHub Releases](https://github.com/AsadSaleemQ/codex-cli-editor/releases), verify the checksum, extract the archive, and run:
 
 ```powershell
-.\cli-editor.exe install
+.\codex-cli-editor.exe install
 ```
 
 Codex CLI Editor installs its per-user launcher and, when VS Code is available, the bundled **Codex CLI Editor** extension. Reload VS Code after installation. Named VS Code profiles must enable the extension in the profile used by the terminal.
@@ -72,9 +72,9 @@ Codex CLI Editor installs its per-user launcher and, when VS Code is available, 
 Open a new terminal so it inherits the updated user PATH, then try:
 
 ```powershell
-codex cli-editor
-cli-editor status
-cli-editor doctor
+codex codex-cli-editor
+codex-cli-editor status
+codex-cli-editor doctor
 ```
 
 The source repository intentionally excludes compiled release executables. Cloning the repository is for development, not installation.
@@ -83,20 +83,20 @@ The source repository intentionally excludes compiled release executables. Cloni
 
 | Goal | Command |
 |---|---|
-| One enhanced Codex session | `codex cli-editor` |
-| Enhanced Codex by default | `cli-editor default codex` |
-| Restore native Codex | `cli-editor restore codex` |
-| Pass `cli-editor` literally to native Codex | `codex -- cli-editor` |
+| One enhanced Codex session | `codex codex-cli-editor` |
+| Enhanced Codex by default | `codex-cli-editor default codex` |
+| Restore native Codex | `codex-cli-editor restore codex` |
+| Pass `codex-cli-editor` literally to native Codex | `codex -- codex-cli-editor` |
 
 ## Manage the installation
 
 ```text
-cli-editor status
-cli-editor doctor [--json]
-cli-editor update --bundle DIRECTORY
-cli-editor rollback [--release RELEASE]
-cli-editor repair --adopt-native codex
-cli-editor uninstall
+codex-cli-editor status
+codex-cli-editor doctor [--json]
+codex-cli-editor update --bundle DIRECTORY
+codex-cli-editor rollback [--release RELEASE]
+codex-cli-editor repair --adopt-native codex
+codex-cli-editor uninstall
 ```
 
 Updates are explicit and bundle-based; startup never blocks on a network download. See the [update and rollback contract](docs/UPDATE_AND_ROLLBACK.md) for recovery and ownership behavior.

@@ -1,9 +1,9 @@
 use std::path::PathBuf;
 
-pub type Result<T> = std::result::Result<T, CliEditorError>;
+pub type Result<T> = std::result::Result<T, CodexCliEditorError>;
 
 #[derive(Debug, thiserror::Error)]
-pub enum CliEditorError {
+pub enum CodexCliEditorError {
     #[error("Codex CLI Editor state directory is unavailable")]
     StateDirectoryUnavailable,
     #[error("another Codex CLI Editor operation is in progress")]
@@ -11,11 +11,11 @@ pub enum CliEditorError {
     #[error("state file is unsupported: expected schema {expected}, found {found}")]
     UnsupportedStateSchema { expected: u32, found: u32 },
     #[error(
-        "native target was not found for {0:?}; after installing it, run `cli-editor repair --adopt-native codex`"
+        "native target was not found for {0:?}; after installing it, run `codex-cli-editor repair --adopt-native codex`"
     )]
     TargetNotFound(crate::CliKind),
     #[error(
-        "native target is missing for {kind:?} at {path}; reinstall Codex, then run `cli-editor repair --adopt-native codex`, or run `cli-editor uninstall`"
+        "native target is missing for {kind:?} at {path}; reinstall Codex, then run `codex-cli-editor repair --adopt-native codex`, or run `codex-cli-editor uninstall`"
     )]
     NativeTargetMissing { kind: crate::CliKind, path: PathBuf },
     #[error("version probe failed for {0}")]
@@ -43,7 +43,7 @@ pub enum CliEditorError {
     #[error("enhanced Codex is unavailable or not compatible")]
     EnhancedUnavailable,
     #[error(
-        "recorded target changed and must be revalidated: {0}; run `cli-editor repair --adopt-native codex`"
+        "recorded target changed and must be revalidated: {0}; run `codex-cli-editor repair --adopt-native codex`"
     )]
     TargetChanged(PathBuf),
     #[error("Codex CLI Editor shim recursion was detected")]
@@ -92,7 +92,9 @@ pub enum CliEditorError {
     StateChangedDuringOperation,
     #[error("the release bundle does not advance the accepted manifest sequence")]
     NoUpdateAvailable,
-    #[error("run the cli-editor.exe from the new external release bundle to update the dispatcher")]
+    #[error(
+        "run the codex-cli-editor.exe from the new external release bundle to update the dispatcher"
+    )]
     ExternalUpdaterRequired,
     #[error("VS Code extension error: {0}")]
     VscodeBridge(String),
@@ -108,7 +110,7 @@ pub enum CliEditorError {
     Cli(#[from] clap::Error),
 }
 
-impl CliEditorError {
+impl CodexCliEditorError {
     /// Uses shell-reserved launcher codes so wrapper failures are distinguishable from child exits.
     pub fn exit_code(&self) -> i32 {
         match self {
@@ -138,22 +140,22 @@ impl CliEditorError {
 mod tests {
     use std::path::PathBuf;
 
-    use super::CliEditorError;
+    use super::CodexCliEditorError;
 
     #[test]
     fn launcher_errors_use_reserved_exit_codes() {
         assert_eq!(
-            CliEditorError::TargetNotFound(crate::CliKind::Codex).exit_code(),
+            CodexCliEditorError::TargetNotFound(crate::CliKind::Codex).exit_code(),
             126
         );
         assert_eq!(
-            CliEditorError::NativeTargetMissing {
+            CodexCliEditorError::NativeTargetMissing {
                 kind: crate::CliKind::Codex,
                 path: PathBuf::from(r"C:\missing\codex.exe"),
             }
             .exit_code(),
             126
         );
-        assert_eq!(CliEditorError::NotInstalled.exit_code(), 125);
+        assert_eq!(CodexCliEditorError::NotInstalled.exit_code(), 125);
     }
 }

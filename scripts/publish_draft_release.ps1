@@ -2,7 +2,7 @@
 param(
     [Parameter(Mandatory)] [uint64] $RunId,
     [Parameter(Mandatory)] [string] $SigningKeyPath,
-    [string] $Repository = 'AsadSaleemQ/cli-editor',
+    [string] $Repository = 'AsadSaleemQ/codex-cli-editor',
     [double] $MinimumFreeGiB = 5
 )
 
@@ -55,29 +55,29 @@ try {
         throw 'Unsigned candidate has invalid release version metadata'
     }
     $bundle = Split-Path -Parent $manifests[0].FullName
-    if ((Split-Path -Leaf $bundle) -ne "cli-editor-$version-windows-x64") { throw 'Unsigned bundle directory name does not match its manifest version' }
+    if ((Split-Path -Leaf $bundle) -ne "codex-cli-editor-$version-windows-x64") { throw 'Unsigned bundle directory name does not match its manifest version' }
 
-    $env:CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX = $keyHex
+    $env:CODEX_CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX = $keyHex
     try {
         & (Join-Path $root 'scripts\finalize_release.ps1') -Version $version -IssuedUnix $issued -ManifestSequence $sequence -ExpiresUnix $expires -RepositoryRoot $root
         if ($LASTEXITCODE -ne 0) { throw 'Local release finalization failed' }
     } finally {
-        Remove-Item Env:\CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX -ErrorAction SilentlyContinue
+        Remove-Item Env:\CODEX_CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX -ErrorAction SilentlyContinue
         $keyHex = $null
     }
 
-    $tag = "cli-editor-v$version-codex$($codexVersions[0])"
+    $tag = "codex-cli-editor-v$version-codex$($codexVersions[0])"
     $existing = @(& gh release view $tag --repo $Repository 2>$null)
     if ($LASTEXITCODE -eq 0) { throw "Release tag already exists: $tag" }
     $assetNames = @(
-        "cli-editor-$version-windows-x64.zip",
-        "cli-editor-$version-windows-x64.zip.sha256",
-        "cli-editor-$version.sbom.json",
-        "cli-editor-$version-source.zip",
-        'cli-editor.exe',
+        "codex-cli-editor-$version-windows-x64.zip",
+        "codex-cli-editor-$version-windows-x64.zip.sha256",
+        "codex-cli-editor-$version.sbom.json",
+        "codex-cli-editor-$version-source.zip",
+        'codex-cli-editor.exe',
         'codex-enhanced.exe',
         'codex-code-mode-host.exe',
-        'cli-editor.vsix',
+        'codex-cli-editor.vsix',
         'compatibility-manifest.json',
         'compatibility-manifest.sig'
     )
@@ -90,7 +90,7 @@ try {
     Invoke-Checked 'gh' (@('release', 'create', $tag) + $assets + @('--repo', $Repository, '--target', $head, '--title', "Codex CLI Editor v$version", '--notes-file', $releaseNotes, '--draft')) 'Unable to publish the signed draft release' | Out-Null
     Write-Output "Published signed draft release $tag from $($run.url)"
 } finally {
-    Remove-Item Env:\CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX -ErrorAction SilentlyContinue
+    Remove-Item Env:\CODEX_CLI_EDITOR_SIGNING_PRIVATE_KEY_HEX -ErrorAction SilentlyContinue
     $keyHex = $null
     if ($ownedArtifacts -and (Test-Path -LiteralPath $artifacts)) {
         Remove-Item -LiteralPath $artifacts -Recurse -Force

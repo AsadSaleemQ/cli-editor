@@ -1,17 +1,17 @@
 {
-  "name": "cli-editor",
+  "name": "codex-cli-editor",
   "displayName": "Codex CLI Editor",
   "description": "Codex CLI Editor turns enhanced Codex terminals into chat-style editors while preserving native behavior everywhere else.",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "publisher": "asadsaleemq",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/AsadSaleemQ/cli-editor.git"
+    "url": "https://github.com/AsadSaleemQ/codex-cli-editor.git"
   },
-  "homepage": "https://github.com/AsadSaleemQ/cli-editor#readme",
+  "homepage": "https://github.com/AsadSaleemQ/codex-cli-editor#readme",
   "bugs": {
-    "url": "https://github.com/AsadSaleemQ/cli-editor/issues"
+    "url": "https://github.com/AsadSaleemQ/codex-cli-editor/issues"
   },
   "engines": {
     "vscode": "^1.90.0"
@@ -19,22 +19,21 @@
   "categories": ["Other"],
   "keywords": ["codex", "terminal", "chat", "clipboard"],
   "activationEvents": [
-    "onCommand:cliEditor.promptHome",
-    "onCommand:cliEditor.promptEnd",
-    "onCommand:cliEditor.smartPaste",
-    "onCommand:terminalSmartPaste.paste"
+    "onCommand:codexCliEditor.promptHome",
+    "onCommand:codexCliEditor.promptEnd",
+    "onCommand:codexCliEditor.smartPaste"
   ],
   "main": "./extension.js",
   "contributes": {
     "commands": [
-      { "command": "cliEditor.promptHome", "title": "Codex CLI Editor: Prompt Start" },
-      { "command": "cliEditor.promptEnd", "title": "Codex CLI Editor: Prompt End" },
-      { "command": "cliEditor.smartPaste", "title": "Codex CLI Editor: Smart Paste" }
+      { "command": "codexCliEditor.promptHome", "title": "Codex CLI Editor: Prompt Start" },
+      { "command": "codexCliEditor.promptEnd", "title": "Codex CLI Editor: Prompt End" },
+      { "command": "codexCliEditor.smartPaste", "title": "Codex CLI Editor: Smart Paste" }
     ],
     "keybindings": [
-      { "command": "cliEditor.promptHome", "key": "ctrl+home", "when": "terminalFocus" },
-      { "command": "cliEditor.promptEnd", "key": "ctrl+end", "when": "terminalFocus" },
-      { "command": "cliEditor.smartPaste", "key": "ctrl+v", "when": "terminalFocus" }
+      { "command": "codexCliEditor.promptHome", "key": "ctrl+home", "when": "terminalFocus" },
+      { "command": "codexCliEditor.promptEnd", "key": "ctrl+end", "when": "terminalFocus" },
+      { "command": "codexCliEditor.smartPaste", "key": "ctrl+v", "when": "terminalFocus" }
     ]
   }
 }

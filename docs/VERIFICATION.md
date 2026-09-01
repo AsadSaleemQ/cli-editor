@@ -29,7 +29,7 @@ Every push and pull request must pass:
 
 The release workflow additionally performs two independent unsigned builds with normalized inputs and timestamps. Artifact hashes must match bit-for-bit before provenance attestations are generated. Signing occurs only after that hosted workflow succeeds and only on the maintainer workstation.
 
-Current results are visible in [GitHub Actions](https://github.com/AsadSaleemQ/cli-editor/actions).
+Current results are visible in [GitHub Actions](https://github.com/AsadSaleemQ/codex-cli-editor/actions).
 
 ## Local checks
 
